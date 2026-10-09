@@ -15,6 +15,7 @@ import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { BarnMenu } from './ui/barnMenu';
+import { DrivingCard, TOGGLES, type Toggle } from './ui/drivingCard';
 
 type Mode = 'drive' | 'parking' | 'spin' | 'menu' | 'leaving';
 interface Pose { x: number; y: number; a: number }
@@ -134,8 +135,17 @@ function setSettings(next: Partial<Settings>): void {
   Object.assign(settings, next);
   store.set(SETTINGS_KEY, encodeSettings(settings));
   g.pilot = null;
+  card.render(settings);
 }
 function setPace(i: number): void { setSettings({ pace: paceStep(i, 0) }); say(`Pace ${PACE_LABELS[settings.pace]}`); }
+function setToggle(t: Toggle, on: boolean): void { setSettings({ [t]: on }); say(`${TOGGLES.find((x) => x.key === t)!.name} ${on ? 'on' : 'off'}`); }
+// the card gives the keyboard back to the field after a click, so Space and Enter never re-press it
+const card = new DrivingCard(stage, {
+  pace: (i) => { setPace(i); stage.focus({ preventScroll: true }); },
+  toggle: (t, on) => { setToggle(t, on); stage.focus({ preventScroll: true }); },
+  fold: (folded) => { setSettings({ folded }); stage.focus({ preventScroll: true }); },
+});
+card.render(settings);
 
 // ---------------- the barn ----------------
 const menu = new BarnMenu(stage, {
@@ -173,7 +183,7 @@ function startParking(): void {
 function openMenu(): void {
   g.mode = 'menu'; g.modeT = 0; g.pendingPick = false; g.outing = 0;
   g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 };
-  refreshMenu(); menu.open();
+  refreshMenu(); menu.open(); card.tuck(true);
 }
 
 function pick(): void {
@@ -181,7 +191,7 @@ function pick(): void {
   if (!settled(g.car)) { g.pendingPick = true; return; }
   const m = g.items[g.car.sel];
   g.rig = m.rig; g.job = m.job; g.outing = 0;
-  menu.close();
+  menu.close(); card.tuck(false);
   g.mode = 'leaving'; g.modeT = 0;
   g.from = { x: parkX(m.rig), y: DOOR_Y, a: 0 };
   g.to = { x: DOOR_X + 24 - EXT[m.rig][0] * SCALE, y: DOOR_Y, a: 0 };
@@ -196,6 +206,8 @@ window.addEventListener('keydown', (e) => {
   const onButton = e.target instanceof HTMLButtonElement;
   const k = controlFor(e.key, e.code);
   if (e.key === '-' || e.key === '=' || e.key === '+') { e.preventDefault(); setPace(paceStep(settings.pace, e.key === '-' ? -1 : 1)); return; }
+  const toggle = !e.metaKey && !e.ctrlKey && !e.altKey && TOGGLES.find((t) => t.letter === e.key.toUpperCase());
+  if (toggle) { e.preventDefault(); setToggle(toggle.key, !settings[toggle.key]); return; }
   if (g.mode === 'menu') {
     if (k === 'up') { e.preventDefault(); g.car = turn(g.car, -1); refreshMenu(); }
     else if (k === 'down') { e.preventDefault(); g.car = turn(g.car, 1); refreshMenu(); }

@@ -61,14 +61,17 @@ describe('auto-steer', () => {
     expect(nearestLane(v.y)).toBe(1);
   });
 
-  it('leaves the yard by the barn to the player', () => {
-    const p = pilotFrom({ x: FIELD.x - 200, y: laneY(3) + 30, a: 0, speed: 40 });
-    const s = autoSteer({ x: FIELD.x - 200, y: laneY(3) + 30, a: 0.5, speed: 40 }, p);
+  it('leaves the yard and the way to the barn to the player until the machine is on the field', () => {
+    const off = { x: FIELD.x - 40, y: laneY(3) + 30, a: Math.PI, speed: 40 };
+    const s = autoSteer(off, pilotFrom(off));
     expect(s.left || s.right).toBe(false);
+    const on = autoSteer({ ...off, x: FIELD.x + 30, a: 0.5 }, s.pilot);
+    expect(on.left || on.right).toBe(true);
+    expect(on.pilot.engaged).toBe(true);
   });
 
   it('works back up the field after the last lane', () => {
-    const p = { lane: LANES - 1, dir: 1, step: 1, turning: false };
+    const p = { lane: LANES - 1, dir: 1, step: 1, turning: false, engaged: true };
     const s = autoSteer({ x: FIELD.x + FIELD.w + 30, y: laneY(LANES - 1), a: 0, speed: 40 }, p);
     expect(s.pilot.lane).toBe(LANES - 2);
     expect(s.pilot.step).toBe(-1);
@@ -77,14 +80,14 @@ describe('auto-steer', () => {
 
 describe('settings', () => {
   it('round-trips and falls back to the defaults for missing or damaged values', () => {
-    const s = { pace: 2, lanes: false, hold: true, auto: true };
+    const s = { pace: 2, lanes: false, hold: true, auto: true, folded: true };
     expect(decodeSettings(encodeSettings(s))).toEqual(s);
     expect(decodeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(decodeSettings('nope')).toEqual(DEFAULT_SETTINGS);
     expect(decodeSettings('{"pace":7,"lanes":"yes","auto":true}')).toEqual({ ...DEFAULT_SETTINGS, auto: true });
   });
 
-  it('starts with lane lines and lane hold on and auto-steer off', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ pace: 0, lanes: true, hold: true, auto: false });
+  it('starts with lane lines and lane hold on, auto-steer off and the card open', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ pace: 0, lanes: true, hold: true, auto: false, folded: false });
   });
 });

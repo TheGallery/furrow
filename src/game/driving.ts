@@ -37,12 +37,14 @@ export interface Pilot {
   /** Which way the next lane is: +1 down the field, -1 up. */
   step: number;
   turning: boolean;
+  /** Set once the machine is on the field; until then the yard and the barn are the player's. */
+  engaged: boolean;
 }
 
 /** Start auto-steer from wherever the machine is: its nearest lane, the way it faces. */
 export function pilotFrom(v: Vehicle): Pilot {
   const lane = nearestLane(v.y);
-  return { lane, dir: Math.cos(v.a) >= 0 ? 1 : -1, step: lane === LANES - 1 ? -1 : 1, turning: false };
+  return { lane, dir: Math.cos(v.a) >= 0 ? 1 : -1, step: lane === LANES - 1 ? -1 : 1, turning: false, engaged: nearField(v.x, v.y, 0) };
 }
 
 const LOOKAHEAD = 110;
@@ -53,8 +55,9 @@ const HEADLAND = 14;
  * lane it works back the other way. Returns the steering to use and the pilot's next state.
  */
 export function autoSteer(v: Vehicle, p: Pilot): { left: boolean; right: boolean; pilot: Pilot } {
-  // the yard and the barn are the player's: auto-steer only works the field and its headlands
-  if (!nearField(v.x, v.y, 120)) return { left: false, right: false, pilot: p };
+  // auto-steer takes over only once the machine is on the field; it then also makes the headland turns
+  const engaged = p.engaged || nearField(v.x, v.y, 0);
+  if (!engaged) return { left: false, right: false, pilot: p };
   let { lane, dir, step, turning } = p;
   const past = dir > 0 ? v.x > FIELD.x + FIELD.w + HEADLAND : v.x < FIELD.x - HEADLAND;
   if (!turning && past) {
@@ -64,7 +67,7 @@ export function autoSteer(v: Vehicle, p: Pilot): { left: boolean; right: boolean
   const dx = dir * LOOKAHEAD, dy = laneY(lane) - v.y;
   const ang = wrap(Math.atan2(dy, dx) - v.a);
   if (turning && Math.abs(ang) < 0.5) turning = false;
-  const pilot = { lane, dir, step, turning };
+  const pilot = { lane, dir, step, turning, engaged };
   if (Math.abs(ang) < 0.03) return { left: false, right: false, pilot };
   const right = Math.cos(v.a) * dy - Math.sin(v.a) * dx > 0;
   return { left: !right, right, pilot };

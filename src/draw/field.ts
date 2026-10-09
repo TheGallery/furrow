@@ -173,8 +173,9 @@ export function drawHud(ctx: Ctx, season: Season, label: string, harvested: numb
   ctx.font = '600 22px ui-sans-serif, -apple-system, sans-serif';
   const text = `${season[0].toUpperCase() + season.slice(1)}  ·  ${label}`;
   const w = ctx.measureText(text).width + 40;
-  ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, 24, H - 66, w, 42, 21); ctx.fill();
-  ctx.fillStyle = '#3b4038'; ctx.fillText(text, 44, H - 38);
+  // top left, above the barn; the driving card has the bottom left
+  ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, 24, 74, w, 42, 21); ctx.fill();
+  ctx.fillStyle = '#3b4038'; ctx.fillText(text, 44, 102);
   if (harvested) {
     const ht = `Harvested this year: ${harvested}`;
     ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
