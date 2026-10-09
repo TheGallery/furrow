@@ -1,14 +1,16 @@
 import { Ambience } from './audio';
 import { barnFloor, barnRoof } from './draw/barn';
-import { SoilLayer, drawField, drawHud, drawSnow, renderBackground } from './draw/field';
+import { SoilLayer, drawField, drawHud, drawLaneLines, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
 import { BARN, DOOR_X, DOOR_Y, FIELD, H, IMPLEMENT_WIDTH, RIG_W, SCALE, W, ZOOM } from './game/constants';
+import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom } from './game/driving';
 import { CROPS, createField, grow, summarize, workStrip } from './game/field';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonAt, seasonBlend } from './game/season';
+import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
@@ -55,6 +57,8 @@ const g = {
   driven: 0,
   growAcc: 0,
   lastWork: null as { x: number; y: number } | null,
+  pilot: null as Pilot | null,
+  lanesAlpha: 0.35,
   menuAcc: 0,
   clock: 0,
 };
@@ -118,6 +122,21 @@ window.addEventListener('focus', paintHint);
 window.addEventListener('blur', paintHint);
 paintHint();
 
+// ---------------- driving settings ----------------
+const settings: Settings = decodeSettings(store.get(SETTINGS_KEY));
+const toast = document.createElement('div');
+toast.className = 'hint-card gone'; toast.setAttribute('role', 'status');
+stage.append(toast);
+let toastT = 0;
+/** A short card at the top naming a change made with a key; the first-run hint steps aside meanwhile. */
+function say(text: string): void { toast.textContent = text; toast.classList.remove('gone'); hint.classList.add('gone'); toastT = 1600; }
+function setSettings(next: Partial<Settings>): void {
+  Object.assign(settings, next);
+  store.set(SETTINGS_KEY, encodeSettings(settings));
+  g.pilot = null;
+}
+function setPace(i: number): void { setSettings({ pace: paceStep(i, 0) }); say(`Pace ${PACE_LABELS[settings.pace]}`); }
+
 // ---------------- the barn ----------------
 const menu = new BarnMenu(stage, {
   turn: (d) => { if (g.mode === 'menu') { g.car = turn(g.car, d); refreshMenu(); } },
@@ -176,6 +195,7 @@ window.addEventListener('keydown', (e) => {
   audio.start();
   const onButton = e.target instanceof HTMLButtonElement;
   const k = controlFor(e.key, e.code);
+  if (e.key === '-' || e.key === '=' || e.key === '+') { e.preventDefault(); setPace(paceStep(settings.pace, e.key === '-' ? -1 : 1)); return; }
   if (g.mode === 'menu') {
     if (k === 'up') { e.preventDefault(); g.car = turn(g.car, -1); refreshMenu(); }
     else if (k === 'down') { e.preventDefault(); g.car = turn(g.car, 1); refreshMenu(); }
@@ -241,7 +261,14 @@ function update(dt: number): { label: string; working: boolean } {
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
     const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
-    g.v = step(g.v, c, s);
+    if (settings.auto && !c.left && !c.right) {
+      const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v));
+      g.pilot = a.pilot; c.left = a.left; c.right = a.right;
+    } else g.pilot = null;
+    // a faster pace runs the machine's own clock faster: same turning circle, sooner
+    const ds = s * PACES[settings.pace];
+    g.v = step(g.v, c, ds);
+    if (settings.hold) g.v = laneHold(g.v, c, ds);
     if (Math.abs(g.v.speed) > 1) { g.driven += s; if (g.driven > 10) hideHint(); }
     const off = workOffset(g.rig), ix = g.v.x + Math.cos(g.v.a) * off, iy = g.v.y + Math.sin(g.v.a) * off;
     const onField = ix > FIELD.x && ix < FIELD.x + FIELD.w && iy > FIELD.y && iy < FIELD.y + FIELD.h;
@@ -283,6 +310,10 @@ function update(dt: number): { label: string; working: boolean } {
   const inside = g.mode !== 'drive' || (g.v.x < DOOR_X + 10 && g.v.y > BARN.y && g.v.y < BARN.y + BARN.h);
   const roof = inside ? 0.1 : 1;
   g.roof += Math.sign(roof - g.roof) * Math.min(Math.abs(roof - g.roof), dt / 800);
+  // lane lines brighten while you drive on the field and settle back when you stop
+  const onTheField = g.mode === 'drive' && Math.abs(g.v.speed) > 1 && g.v.x > FIELD.x - 80 && g.v.x < FIELD.x + FIELD.w + 80;
+  g.lanesAlpha += ((onTheField ? 1 : 0.35) - g.lanesAlpha) * Math.min(1, dt / 500);
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) { toast.classList.add('gone'); paintHint(); } }
 
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
   audio.update(s, engine, info.season);
@@ -303,6 +334,7 @@ function render(label: string, working: boolean): void {
   ctx.drawImage(bg, 0, 0);
   ctx.setTransform(z, 0, 0, z, 0, 0);   // the world, in world units
   drawField(ctx, soil, g.field, t);
+  if (settings.lanes) drawLaneLines(ctx, g.lanesAlpha);
 
   // inside the barn: floor, turntable and the parked machines on the carousel
   barnFloor(ctx, g.spin * Math.PI);

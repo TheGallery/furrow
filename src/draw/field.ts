@@ -150,6 +150,16 @@ export function drawField(ctx: Ctx, soil: SoilLayer, f: Field, t: number): void 
   ctx.restore();
 }
 
+/** Faint dashed lines along the lane edges: a guide for laying passes side by side, never tiles. */
+export function drawLaneLines(ctx: Ctx, alpha: number): void {
+  if (alpha <= 0.01) return;
+  ctx.save(); rr(ctx, FIELD.x, FIELD.y, FIELD.w, FIELD.h, FIELD.r); ctx.clip();
+  ctx.strokeStyle = `rgba(255,250,236,${0.22 * alpha})`; ctx.lineWidth = 2.2; ctx.setLineDash([26, 18]); ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let l = 1; l < LANES; l++) { const y = FIELD.y + l * LANE_H; ctx.moveTo(FIELD.x + 10, y); ctx.lineTo(FIELD.x + FIELD.w - 10, y); }
+  ctx.stroke(); ctx.restore();
+}
+
 /** Falling snow over the whole view, in view (screen) units. */
 export function drawSnow(ctx: Ctx, t: number, amount: number): void {
   if (amount <= 0) return;
