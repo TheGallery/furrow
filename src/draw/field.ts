@@ -2,7 +2,7 @@ import { BARN, CELL, COLS, FIELD, H, LANES, LANE_H, ROWS, W, WORLD_H, WORLD_W, Z
 import { CROPS, CULTIVATED, type Field, RAW, SEEDED, STUBBLE, WATERED } from '../game/field';
 import type { Crop, Season } from '../game/types';
 import { barnGround } from './barn';
-import { type Ctx, P, mix, rnd, rr } from './palette';
+import { type Ctx, P, SEASON_DOT, mix, rnd, rr } from './palette';
 
 export interface Blend { from: Season; to: Season; k: number }
 
@@ -160,6 +160,25 @@ export function drawLaneLines(ctx: Ctx, alpha: number): void {
   ctx.stroke(); ctx.restore();
 }
 
+/**
+ * The way auto-steer will drive next, shown with the lane guides: soft dashes ahead, red where it
+ * will back up, and a dot where the implement meets the ground.
+ */
+export function drawRoute(ctx: Ctx, route: { pts: Float32Array; rev: boolean }[], tines: { x: number; y: number }, alpha: number): void {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.lineWidth = 2; ctx.lineCap = 'round';
+  for (const r of route) {
+    ctx.strokeStyle = r.rev ? `rgba(217,112,95,${0.85 * alpha})` : `rgba(255,250,236,${0.6 * alpha})`;
+    ctx.setLineDash(r.rev ? [5, 5] : [12, 9]);
+    ctx.beginPath();
+    for (let i = 0; i < r.pts.length; i += 2) { if (i) ctx.lineTo(r.pts[i], r.pts[i + 1]); else ctx.moveTo(r.pts[i], r.pts[i + 1]); }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]); ctx.fillStyle = `rgba(255,250,236,${0.9 * alpha})`;
+  ctx.beginPath(); ctx.arc(tines.x, tines.y, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 /** Falling snow over the whole view, in view (screen) units. */
 export function drawSnow(ctx: Ctx, t: number, amount: number): void {
   if (amount <= 0) return;
@@ -169,16 +188,29 @@ export function drawSnow(ctx: Ctx, t: number, amount: number): void {
   ctx.fill();
 }
 
-export function drawHud(ctx: Ctx, season: Season, label: string, harvested: number): void {
+/**
+ * The season pill, top left: a soft ring that fills through the season, the season and what the
+ * machine is doing, and when the next season comes ("summer in about 3 min").
+ */
+export function drawHud(ctx: Ctx, season: Season, label: string, harvested: number, clock: { k: number; text: string }): void {
   ctx.font = '600 22px ui-sans-serif, -apple-system, sans-serif';
   const text = `${season[0].toUpperCase() + season.slice(1)}  ·  ${label}`;
-  const w = ctx.measureText(text).width + 40;
+  const tw = ctx.measureText(text).width;
+  ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
+  const after = `  ·  ${clock.text}`, aw = ctx.measureText(after).width;
+  const w = 70 + tw + aw + 22;
   // top left, above the barn; the driving card has the bottom left
   ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, 24, 74, w, 42, 21); ctx.fill();
-  ctx.fillStyle = '#3b4038'; ctx.fillText(text, 44, 102);
+  const cx = 52, cy = 95;
+  ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.strokeStyle = '#ece5d4'; ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = SEASON_DOT[season]; ctx.beginPath(); ctx.arc(cx, cy, 11, -Math.PI / 2, -Math.PI / 2 + Math.max(0.05, clock.k) * Math.PI * 2); ctx.stroke();
+  ctx.font = '600 22px ui-sans-serif, -apple-system, sans-serif';
+  ctx.fillStyle = '#3b4038'; ctx.fillText(text, 72, 102);
+  ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
+  ctx.fillStyle = '#7a7f72'; ctx.fillText(after, 72 + tw, 102);
   if (harvested) {
     const ht = `Harvested this year: ${harvested}`;
-    ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
     const hw = ctx.measureText(ht).width + 36;
     ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, W - hw - 24, H - 62, hw, 36, 18); ctx.fill();
     ctx.fillStyle = '#3b4038'; ctx.fillText(ht, W - hw - 6, H - 38);

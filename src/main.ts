@@ -1,14 +1,15 @@
 import { Ambience } from './audio';
 import { barnFloor, barnRoof } from './draw/barn';
-import { SoilLayer, drawField, drawHud, drawLaneLines, drawSnow, renderBackground } from './draw/field';
+import { SoilLayer, drawField, drawHud, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
-import { BARN, DOOR_X, DOOR_Y, FIELD, H, IMPLEMENT_WIDTH, RIG_W, SCALE, W, ZOOM } from './game/constants';
-import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom } from './game/driving';
+import { BARN, DOOR_X, DOOR_Y, FIELD, H, RIG_W, SCALE, W, WORK_HALF, ZOOM } from './game/constants';
+import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom, routeAhead } from './game/driving';
 import { CROPS, createField, grow, summarize, workStrip } from './game/field';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
+import { seasonClock } from './game/almanac';
 import { seasonAt, seasonBlend } from './game/season';
 import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
@@ -17,6 +18,7 @@ import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
 import { BarnMenu } from './ui/barnMenu';
 import { DrivingCard, TOGGLES, type Toggle } from './ui/drivingCard';
+import { FieldCard } from './ui/fieldCard';
 
 type Mode = 'drive' | 'parking' | 'spin' | 'menu' | 'leaving';
 interface Pose { x: number; y: number; a: number }
@@ -63,6 +65,7 @@ const g = {
   pilot: null as Pilot | null,
   lanesAlpha: 0.35,
   menuAcc: 0,
+  cardAcc: 0,
   clock: 0,
 };
 
@@ -148,6 +151,13 @@ const card = new DrivingCard(stage, {
   fold: (folded) => { setSettings({ folded }); stage.focus({ preventScroll: true }); },
 });
 card.render(settings);
+// what is planted, beside the driving card; folding it leaves the driving plan alone
+const fieldCard = new FieldCard(stage, (fieldFolded) => {
+  settings.fieldFolded = fieldFolded; store.set(SETTINGS_KEY, encodeSettings(settings));
+  fieldCard.setFolded(fieldFolded); stage.focus({ preventScroll: true });
+});
+fieldCard.setFolded(settings.fieldFolded);
+fieldCard.render(g.field, g.elapsed);
 
 // ---------------- the barn ----------------
 const menu = new BarnMenu(stage, {
@@ -179,13 +189,13 @@ function startParking(): void {
   g.car = { n: g.items.length, sel: itemIndex(g.job), scroll: itemIndex(g.job) };
   g.from = { x: g.v.x, y: g.v.y, a: g.v.a };
   g.to = { x: parkX(g.rig) + 2 * rigMid(g.rig), y: DOOR_Y, a: Math.PI };
-  g.v.speed = 0; held.clear(); hideHint();
+  g.v.speed = 0; g.pilot = null; held.clear(); hideHint();
 }
 
 function openMenu(): void {
   g.mode = 'menu'; g.modeT = 0; g.pendingPick = false; g.outing = 0;
   g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 }; g.wheels = STRAIGHT;
-  refreshMenu(); menu.open(); card.tuck(true);
+  refreshMenu(); menu.open(); card.tuck(true); fieldCard.tuck(true);
 }
 
 function pick(): void {
@@ -193,7 +203,7 @@ function pick(): void {
   if (!settled(g.car)) { g.pendingPick = true; return; }
   const m = g.items[g.car.sel];
   g.rig = m.rig; g.job = m.job; g.outing = 0;
-  menu.close(); card.tuck(false);
+  menu.close(); card.tuck(false); fieldCard.tuck(false);
   g.mode = 'leaving'; g.modeT = 0;
   g.from = { x: parkX(m.rig), y: DOOR_Y, a: 0 };
   g.to = { x: DOOR_X + 24 - EXT[m.rig][0] * SCALE, y: DOOR_Y, a: 0 };
@@ -272,16 +282,23 @@ function update(dt: number): { label: string; working: boolean } {
   if (info.year !== g.year) { g.year = info.year; g.harvestCells = 0; }
   g.growAcc += dt;
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
+  g.cardAcc += dt;
+  if (g.cardAcc >= 1000) { g.cardAcc = 0; fieldCard.render(g.field, g.elapsed); }
 
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
     const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
-    if (settings.auto && !c.left && !c.right && (c.up || g.v.speed > 0)) {
-      const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v));
-      g.pilot = a.pilot; c.left = a.left; c.right = a.right;
-    } else g.pilot = null;
+    // Auto-steer drives while ↑ is held, gears and all, so it can back round at the headland; let go
+    // and it only steers while the machine rolls to a stop, keeping its place for when ↑ comes back.
+    // ← → or backing up by hand take over.
+    if (!settings.auto || c.left || c.right || (c.down && !c.up)) g.pilot = null;
+    else if (c.up || g.v.speed !== 0) {
+      const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v), workOffset(g.rig));
+      g.pilot = a.pilot;
+      if (a.pilot.engaged) { c.left = a.left; c.right = a.right; if (c.up) { c.up = a.up; c.down = a.down; } }
+    }
     steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
     // a faster pace runs the machine's own clock faster: same turning circle, sooner
     const ds = s * PACES[settings.pace];
@@ -296,7 +313,7 @@ function update(dt: number): { label: string; working: boolean } {
       const p0 = g.lastWork && Math.hypot(ix - g.lastWork.x, iy - g.lastWork.y) < 12 ? g.lastWork : { x: ix, y: iy };
       const steps = Math.max(1, Math.ceil(Math.hypot(ix - p0.x, iy - p0.y)));
       for (let k = 1; k <= steps; k++) {
-        const r = workStrip(g.field, p0.x + ((ix - p0.x) * k) / steps, p0.y + ((iy - p0.y) * k) / steps, g.v.a, IMPLEMENT_WIDTH / 2 - 2, g.job, g.crop);
+        const r = workStrip(g.field, p0.x + ((ix - p0.x) * k) / steps, p0.y + ((iy - p0.y) * k) / steps, g.v.a, WORK_HALF, g.job, g.crop);
         for (const i of r.changed) soil.paint(g.field, i);
         g.harvestCells += r.harvested; g.outing += r.harvested;
       }
@@ -357,6 +374,11 @@ function render(label: string, working: boolean): void {
   ctx.setTransform(z, 0, 0, z, 0, 0);   // the world, in world units
   drawField(ctx, soil, g.field, t);
   if (settings.lanes) drawLaneLines(ctx, g.lanesAlpha);
+  // with the guides on, auto-steer shows the way it will drive
+  if (settings.lanes && g.pilot?.engaged && g.mode === 'drive') {
+    const off = workOffset(g.rig);
+    drawRoute(ctx, routeAhead(g.v, g.pilot, off), { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, g.lanesAlpha);
+  }
 
   // inside the barn: floor, turntable and the parked machines on the carousel
   barnFloor(ctx, g.spin * Math.PI);
@@ -381,7 +403,7 @@ function render(label: string, working: boolean): void {
   const sea = seasonAt(g.elapsed).season;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather and the HUD, in view units
   drawSnow(ctx, t, (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0));
-  drawHud(ctx, sea, label, Math.floor(g.harvestCells / 60));
+  drawHud(ctx, sea, label, Math.floor(g.harvestCells / 60), seasonClock(g.elapsed));
 }
 
 let last = performance.now();

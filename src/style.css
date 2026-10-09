@@ -66,3 +66,23 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 .dc-foot { margin: 0.15em 0 0; color: var(--muted); font-size: 0.82em; }
 
 @media (prefers-reduced-motion: reduce) { .barn-label, .cv-arrow, .chip, .hint-card, .dc-pace button, .dc-fold { transition: none; } }
+
+/* the field card sits beside the driving card: what is planted and how it is coming on */
+.field-card { position: absolute; left: calc(1.9% + max(22%, 13.5em) + 1%); bottom: 3.2%; width: 23%; min-width: 14em; display: flex; flex-direction: column; background: rgba(255, 253, 248, 0.95); border: 1px solid var(--line); border-radius: 1em; box-shadow: 0 0.4em 1.2em rgba(70, 55, 35, 0.12); overflow: hidden; }
+.field-card .dc-head { display: flex; align-items: center; gap: 0.5em; border: 0; background: transparent; font: inherit; font-size: 1.08em; color: var(--ink); padding: 0.5em 0.85em; cursor: pointer; text-align: left; }
+.field-card:not(.folded) .dc-sum { visibility: hidden; }
+.field-card.folded .dc-fold { transform: rotate(180deg); }
+.field-card.folded .fc-body { display: none; }
+.fc-body { display: grid; gap: 0.3em; padding: 0.7em 0.85em 0.6em; border-bottom: 1px solid var(--line); }
+.fc-crop { display: flex; align-items: center; gap: 0.45em; flex-wrap: wrap; }
+.fc-sw { width: 0.8em; height: 0.8em; border-radius: 0.25em; flex: none; }
+.fc-share { color: var(--muted); font-size: 0.88em; }
+.fc-stage { margin-left: auto; font-size: 0.8em; border-radius: 999px; padding: 0 0.6em; background: #eef3e6; color: #4d7346; }
+.fc-stage.s-sown { background: #f5ecd9; color: #8a6a35; }
+.fc-stage.s-ripe { background: #f8e8c4; color: #8a6420; }
+.fc-stage.s-resting { background: #eceff1; color: #66737b; }
+.fc-bar { height: 0.3em; border-radius: 999px; background: #efe9da; overflow: hidden; }
+.fc-bar i { display: block; height: 100%; border-radius: inherit; transition: width 1.2s linear; }
+.fc-note { font-size: 0.85em; color: var(--muted); }
+.fc-rest { font-size: 0.85em; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 0.3em; margin-top: 0.15em; }
+@media (prefers-reduced-motion: reduce) { .fc-bar i, .field-card .dc-fold { transition: none; } }
