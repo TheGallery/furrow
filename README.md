@@ -23,7 +23,7 @@ npm run dev      # open the printed local URL
 | ↓ | Brake, then reverse | Turn the carousel down |
 | ← → | Steer (slowly when standing still) | Change the crop |
 | Enter / Space | | Drive out with the machine at the door |
-| − / = | Slower / faster pace | Slower / faster pace |
+| − / = (or +) | Slower / faster pace | Slower / faster pace |
 | L | Lane lines on or off | Lane lines on or off |
 | H | Lane hold on or off | Lane hold on or off |
 | A | Auto-steer on or off | Auto-steer on or off |
