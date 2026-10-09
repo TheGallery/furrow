@@ -21,8 +21,10 @@ npm run dev      # open the printed local URL
 | --- | --- | --- |
 | ↑ | Drive forward | Turn the carousel up |
 | ↓ | Brake, then reverse | Turn the carousel down |
-| ← → | Steer (while moving) | Change the crop |
+| ← → | Steer (slowly when standing still) | Change the crop |
 | Enter / Space | | Drive out with the machine at the door |
+
+The arrow keys work as soon as the page loads; no click is needed. If the browser keeps the keyboard elsewhere (for example, the tab opened in the background or the address bar still has focus), the card at the top says "Click the field, then drive with the arrow keys", and one click on the field fixes it.
 
 The mute button in the top-right corner turns the sound on or off, and Furrow remembers your choice.
 

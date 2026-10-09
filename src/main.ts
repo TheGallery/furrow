@@ -10,6 +10,7 @@ import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, 
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonAt, seasonBlend } from './game/season';
 import type { Crop, Job, Rig } from './game/types';
+import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { BarnMenu } from './ui/barnMenu';
 
@@ -101,9 +102,21 @@ function paintMute(): void {
 muteBtn.addEventListener('click', () => { audio.start(); audio.setMuted(!audio.muted); store.set(MUTE_KEY, audio.muted ? '1' : '0'); paintMute(); muteBtn.blur(); });
 paintMute();
 
+// The stage takes the keyboard on load. When the browser keeps keys elsewhere (the tab opened
+// in the background, or focus left in the address bar), the hint says to click the field first.
+stage.focus({ preventScroll: true });
 const hint = document.getElementById('hint')!;
-if (store.get(HINT_KEY)) hint.classList.add('gone');
-function hideHint(): void { if (!hint.classList.contains('gone')) { hint.classList.add('gone'); store.set(HINT_KEY, '1'); } }
+const DRIVE_HINT = hint.textContent ?? '';
+let hinted = !!store.get(HINT_KEY);
+function paintHint(): void {
+  const away = !document.hasFocus();
+  hint.textContent = away ? 'Click the field, then drive with the arrow keys' : DRIVE_HINT;
+  hint.classList.toggle('gone', hinted && !away);
+}
+function hideHint(): void { if (!hinted) { hinted = true; store.set(HINT_KEY, '1'); paintHint(); } }
+window.addEventListener('focus', paintHint);
+window.addEventListener('blur', paintHint);
+paintHint();
 
 // ---------------- the barn ----------------
 const menu = new BarnMenu(stage, {
@@ -154,27 +167,31 @@ function pick(): void {
   g.from = { x: parkX(m.rig), y: DOOR_Y, a: 0 };
   g.to = { x: DOOR_X + 24 - EXT[m.rig][0] * SCALE, y: DOOR_Y, a: 0 };
   held.clear(); save();
+  stage.focus({ preventScroll: true });
 }
 
 // ---------------- input ----------------
-const held = new Set<string>();
-const KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const held = new Set<Control>();
 window.addEventListener('keydown', (e) => {
   audio.start();
   const onButton = e.target instanceof HTMLButtonElement;
+  const k = controlFor(e.key, e.code);
   if (g.mode === 'menu') {
-    const k = e.key;
-    if (k === 'ArrowUp') { e.preventDefault(); g.car = turn(g.car, -1); refreshMenu(); }
-    else if (k === 'ArrowDown') { e.preventDefault(); g.car = turn(g.car, 1); refreshMenu(); }
-    else if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); const i = CROPS.indexOf(g.crop) + (k === 'ArrowLeft' ? -1 : 1); setCrop(CROPS[(i + CROPS.length) % CROPS.length]); }
-    else if ((k === 'Enter' || k === ' ') && !onButton) { e.preventDefault(); pick(); }
+    if (k === 'up') { e.preventDefault(); g.car = turn(g.car, -1); refreshMenu(); }
+    else if (k === 'down') { e.preventDefault(); g.car = turn(g.car, 1); refreshMenu(); }
+    else if (k === 'left' || k === 'right') { e.preventDefault(); const i = CROPS.indexOf(g.crop) + (k === 'left' ? -1 : 1); setCrop(CROPS[(i + CROPS.length) % CROPS.length]); }
+    else if ((e.key === 'Enter' || e.key === ' ') && !onButton) { e.preventDefault(); pick(); }
     return;
   }
-  if (KEYS.has(e.key)) { e.preventDefault(); held.add(e.key); }
+  if (k) { e.preventDefault(); held.add(k); }
 });
-window.addEventListener('keyup', (e) => held.delete(e.key));
+window.addEventListener('keyup', (e) => { const k = controlFor(e.key, e.code); if (k) held.delete(k); });
 window.addEventListener('blur', () => held.clear());
-window.addEventListener('pointerdown', () => audio.start());
+window.addEventListener('pointerdown', (e) => {
+  audio.start();
+  // a click anywhere on the farm gives it the keyboard, unless a button wants it
+  if (!(e.target instanceof HTMLButtonElement)) stage.focus({ preventScroll: true });
+});
 
 cv.addEventListener('click', (e) => {
   if (g.mode !== 'menu') return;
@@ -223,7 +240,7 @@ function update(dt: number): { label: string; working: boolean } {
   let label = 'In the barn', working = false;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
-    const c = { up: held.has('ArrowUp'), down: held.has('ArrowDown'), left: held.has('ArrowLeft'), right: held.has('ArrowRight') };
+    const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
     g.v = step(g.v, c, s);
     if (Math.abs(g.v.speed) > 1) { g.driven += s; if (g.driven > 10) hideHint(); }
     const off = workOffset(g.rig), ix = g.v.x + Math.cos(g.v.a) * off, iy = g.v.y + Math.sin(g.v.a) * off;
