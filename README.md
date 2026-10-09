@@ -60,12 +60,13 @@ The mute button in the top-right corner turns the sound on or off, and Furrow re
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
+- `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit (0.5 now). Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
 - `src/draw/` holds the canvas drawings: the field, the machines and the barn.
 - `src/ui/` holds the barn label.
 - `src/audio.ts` holds the ambient sound.
