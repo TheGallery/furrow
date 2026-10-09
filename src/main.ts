@@ -80,7 +80,7 @@ let scale = 1, bgKey = '';
 
 function resize(): void {
   const s = Math.min(2, Math.max(1, (stage.clientWidth * (window.devicePixelRatio || 1)) / W));
-  if (Math.abs(s - scale) < 0.01 && cv.width === Math.round(W * s)) return;
+  if (Math.abs(s - scale) < 0.01 && cv.width === Math.round(W * s) && bg.width === cv.width) return;
   scale = s;
   for (const c of [cv, bg]) { c.width = Math.round(W * s); c.height = Math.round(H * s); }
   bgKey = '';
