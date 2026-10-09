@@ -16,8 +16,8 @@ export interface Controls {
   right: boolean;
 }
 
-// World units per second. At ZOOM 0.5 the top speed is 32 screen px/s, gentler on screen
-// than the original 46, and about half a minute to drive one lane of the field.
+// World units per second, so the pace on screen follows ZOOM: at 0.75 the top speed is
+// 48 screen px/s, about the original 46, and some twenty seconds to drive one lane.
 export const MAX_SPEED = 64;
 export const REVERSE_SPEED = 22;
 // Quick enough that a short tap visibly moves the machine, still calm at the top.

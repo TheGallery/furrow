@@ -3,16 +3,16 @@ import { BARN, CELL, COLS, DOOR_BOTTOM, DOOR_TOP, DOOR_X, DOOR_Y, FIELD, LANES, 
 import { BOUNDS, insideBarn } from '../src/game/vehicle';
 
 describe('layout at the configured zoom', () => {
-  it('draws the farm at half size, so the field holds twelve approved lanes', () => {
-    expect(ZOOM).toBe(0.5);
-    expect(LANES).toBe(12);
+  it('draws the farm at three-quarter size, so the field holds eight approved lanes', () => {
+    expect(ZOOM).toBe(0.75);
+    expect(LANES).toBe(8);
     expect(FIELD.h).toBeCloseTo(LANES * LANE_H);
   });
 
   it('keeps the soil grid two screen pixels a cell and covering the field', () => {
-    expect(CELL * ZOOM).toBe(2);
-    expect(COLS * CELL).toBe(FIELD.w);
-    expect(ROWS * CELL).toBeLessThanOrEqual(FIELD.h);
+    expect(CELL * ZOOM).toBeCloseTo(2);
+    expect(COLS * CELL).toBeCloseTo(FIELD.w);
+    expect(ROWS * CELL).toBeLessThanOrEqual(FIELD.h + 1e-6);
     expect(FIELD.h - ROWS * CELL).toBeLessThan(CELL);
   });
 

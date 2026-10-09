@@ -65,8 +65,10 @@ export function workCell(f: Field, i: number, job: Job, crop: Crop): { changed: 
 export function workStrip(f: Field, x: number, y: number, a: number, halfWidth: number, job: Job, crop: Crop): { changed: number[]; harvested: number } {
   const nx = -Math.sin(a), ny = Math.cos(a), changed: number[] = [];
   let harvested = 0;
-  for (let t = -halfWidth; t <= halfWidth; t += CELL / 2) {
-    const i = cellAt(x + nx * t, y + ny * t);
+  // sample every half cell, counted in whole steps so a fractional CELL still reaches both edges
+  const n = Math.max(1, Math.round((4 * halfWidth) / CELL));
+  for (let k = 0; k <= n; k++) {
+    const t = -halfWidth + (2 * halfWidth * k) / n, i = cellAt(x + nx * t, y + ny * t);
     if (i < 0) continue;
     const r = workCell(f, i, job, crop);
     if (r.changed) changed.push(i);

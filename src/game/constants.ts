@@ -4,9 +4,9 @@ export const H = 720;
 
 // How large the world is drawn: screen pixels per world unit. Machines, implements, the barn,
 // plants, lanes and speeds are all in world units, so this one number sets the scale of the
-// farm. At 1 the view holds the original six-lane field; at 0.5 everything is drawn half size
-// and the same pane holds a field about twice as long and twice as deep.
-export const ZOOM = 0.5;
+// farm. At 1 the view holds the original six-lane field; at 0.75 everything is drawn at three
+// quarters of that size and the same pane holds an eight-lane field.
+export const ZOOM = 0.75;
 export const WORLD_W = W / ZOOM;
 export const WORLD_H = H / ZOOM;
 
@@ -34,7 +34,7 @@ export const FIELD = {
   r: 46,
 } as const;
 export const COLS = Math.round(FIELD.w / CELL);
-export const ROWS = Math.floor(FIELD.h / CELL);
+export const ROWS = Math.floor(FIELD.h / CELL + 1e-9);
 
 export const DOOR_Y = Math.round(FIELD.y + FIELD.h / 2);
 export const DOOR_TOP = DOOR_Y - 52;
