@@ -7,6 +7,14 @@ export const PACE_LABELS = ['1×', '1½×', '2×'] as const;
 
 export const paceStep = (i: number, d: number): number => Math.min(PACES.length - 1, Math.max(0, i + d));
 
+/** Longest single step of machine time; a slow frame or a fast pace is split into steps no longer than this. */
+export const SUB_STEP = 1 / 60;
+/** Splits `ds` seconds of machine time into `n` equal steps of `h` seconds, each at most SUB_STEP. */
+export function subSteps(ds: number): { n: number; h: number } {
+  const n = Math.max(1, Math.ceil(ds / SUB_STEP - 1e-9));
+  return { n, h: ds / n };
+}
+
 export const laneY = (lane: number): number => FIELD.y + (lane + 0.5) * LANE_H;
 export const nearestLane = (y: number): number => Math.min(LANES - 1, Math.max(0, Math.floor((y - FIELD.y) / LANE_H)));
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));

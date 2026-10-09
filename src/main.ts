@@ -5,7 +5,7 @@ import { drawRig } from './draw/machines';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
 import { BARN, DOOR_X, DOOR_Y, FIELD, H, RIG_W, SCALE, W, WORK_HALF, ZOOM } from './game/constants';
-import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom, routeAhead } from './game/driving';
+import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom, routeAhead, subSteps } from './game/driving';
 import { CROPS, createField, grow, summarize, workStrip } from './game/field';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
@@ -289,36 +289,39 @@ function update(dt: number): { label: string; working: boolean } {
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
-    const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
-    // Auto-steer drives while ↑ is held, gears and all, so it can back round at the headland; let go
-    // and it only steers while the machine rolls to a stop, keeping its place for when ↑ comes back.
-    // ← → or backing up by hand take over.
-    if (!settings.auto || c.left || c.right || (c.down && !c.up)) g.pilot = null;
-    else if (c.up || g.v.speed !== 0) {
-      const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v), workOffset(g.rig));
-      g.pilot = a.pilot;
-      if (a.pilot.engaged) { c.left = a.left; c.right = a.right; if (c.up) { c.up = a.up; c.down = a.down; } }
-    }
-    steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
-    // a faster pace runs the machine's own clock faster: same turning circle, sooner
-    const ds = s * PACES[settings.pace];
-    g.v = step(g.v, c, ds);
-    if (settings.hold) g.v = laneHold(g.v, c, ds);
-    if (Math.abs(g.v.speed) > 1) { g.driven += s; if (g.driven > 10) hideHint(); }
-    const off = workOffset(g.rig), ix = g.v.x + Math.cos(g.v.a) * off, iy = g.v.y + Math.sin(g.v.a) * off;
-    const onField = ix > FIELD.x && ix < FIELD.x + FIELD.w && iy > FIELD.y && iy < FIELD.y + FIELD.h;
-    if (g.v.speed > 1 && onField) {
-      working = true;
-      // sweep from where the implement was last frame, so a slow frame never leaves a gap
-      const p0 = g.lastWork && Math.hypot(ix - g.lastWork.x, iy - g.lastWork.y) < 12 ? g.lastWork : { x: ix, y: iy };
-      const steps = Math.max(1, Math.ceil(Math.hypot(ix - p0.x, iy - p0.y)));
-      for (let k = 1; k <= steps; k++) {
-        const r = workStrip(g.field, p0.x + ((ix - p0.x) * k) / steps, p0.y + ((iy - p0.y) * k) / steps, g.v.a, WORK_HALF, g.job, g.crop);
-        for (const i of r.changed) soil.paint(g.field, i);
-        g.harvestCells += r.harvested; g.outing += r.harvested;
+    // a faster pace runs the machine's own clock faster: same turning circle, sooner; the frame's
+    // machine time runs in short fixed steps, so steering and the worked strip match 60 fps at any pace
+    const { n, h } = subSteps(s * PACES[settings.pace]);
+    for (let k = 0; k < n; k++) {
+      const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
+      // Auto-steer drives while ↑ is held, gears and all, so it can back round at the headland; let go
+      // and it only steers while the machine rolls to a stop, keeping its place for when ↑ comes back.
+      // ← → or backing up by hand take over.
+      if (!settings.auto || c.left || c.right || (c.down && !c.up)) g.pilot = null;
+      else if (c.up || g.v.speed !== 0) {
+        const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v), workOffset(g.rig));
+        g.pilot = a.pilot;
+        if (a.pilot.engaged) { c.left = a.left; c.right = a.right; if (c.up) { c.up = a.up; c.down = a.down; } }
       }
-      g.lastWork = { x: ix, y: iy };
-    } else g.lastWork = null;
+      steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
+      g.v = step(g.v, c, h);
+      if (settings.hold) g.v = laneHold(g.v, c, h);
+      if (Math.abs(g.v.speed) > 1) { g.driven += s / n; if (g.driven > 10) hideHint(); }
+      const off = workOffset(g.rig), ix = g.v.x + Math.cos(g.v.a) * off, iy = g.v.y + Math.sin(g.v.a) * off;
+      const onField = ix > FIELD.x && ix < FIELD.x + FIELD.w && iy > FIELD.y && iy < FIELD.y + FIELD.h;
+      if (g.v.speed > 1 && onField) {
+        working = true;
+        // sweep from where the implement was last step, so a long step never leaves a gap
+        const p0 = g.lastWork && Math.hypot(ix - g.lastWork.x, iy - g.lastWork.y) < 12 ? g.lastWork : { x: ix, y: iy };
+        const steps = Math.max(1, Math.ceil(Math.hypot(ix - p0.x, iy - p0.y)));
+        for (let j = 1; j <= steps; j++) {
+          const r = workStrip(g.field, p0.x + ((ix - p0.x) * j) / steps, p0.y + ((iy - p0.y) * j) / steps, g.v.a, WORK_HALF, g.job, g.crop);
+          for (const i of r.changed) soil.paint(g.field, i);
+          g.harvestCells += r.harvested; g.outing += r.harvested;
+        }
+        g.lastWork = { x: ix, y: iy };
+      } else g.lastWork = null;
+    }
     label = working && item ? item.label : item?.name ?? 'Driving';
     if (insideBarn(g.v.x, g.v.y) && Math.abs(g.v.speed) < 3) { g.still += s; if (g.still > 0.4) startParking(); } else g.still = 0;
   } else if (g.mode === 'parking') {

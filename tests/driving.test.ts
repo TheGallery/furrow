@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CELL, COLS, DOOR_X, FIELD, LANES, ROWS, WORK_HALF } from '../src/game/constants';
-import { PACES, autoSteer, laneEnd, laneHold, laneY, nearestLane, paceStep, pilotFrom, routeAhead, turnLegs } from '../src/game/driving';
+import { PACES, autoSteer, laneEnd, laneHold, laneY, nearestLane, paceStep, pilotFrom, routeAhead, subSteps, turnLegs } from '../src/game/driving';
 import { RAW, createField, workStrip } from '../src/game/field';
 import { workOffset } from '../src/game/machines';
 import { DEFAULT_SETTINGS, decodeSettings, encodeSettings } from '../src/game/settings';
@@ -46,29 +46,33 @@ describe('lane hold', () => {
   });
 });
 
-// The game's own loop for one machine with ↑ held and auto-steer on (main.ts), headless.
-export function pass(off: number, lanes = LANES, hold = true) {
+// The game's own loop for one machine with ↑ held and auto-steer on (main.ts), headless: each
+// frame's machine time (`frame` seconds, after the pace) runs in the game's fixed sub-steps.
+export function pass(off: number, lanes = LANES, hold = true, frame = 1 / 60) {
   const f = createField();
   let v: Vehicle = { x: FIELD.x - 30 - Math.max(0, off), y: laneY(0), a: 0, speed: 0 }, p = pilotFrom(v), last: { x: number; y: number } | null = null;
   let done = 0, turns = 0, backing = 0, t = 0;
+  const { n, h } = subSteps(frame);
   while (done < lanes && t < 600) {
-    t += 1 / 60;
-    const s = autoSteer(v, p, off), before = p.lane, leg = p.leg;
-    p = s.pilot;
-    if (leg < 0 && p.leg === 0) turns++;
-    if (p.lane !== before) done++;
-    const c = { up: p.engaged ? s.up : true, down: s.down, left: s.left, right: s.right };
-    v = step(v, c, 1 / 60);
-    if (hold) v = laneHold(v, c, 1 / 60);
-    if (v.speed < -1) backing += 1 / 60;
-    const ix = v.x + Math.cos(v.a) * off, iy = v.y + Math.sin(v.a) * off;
-    if (v.speed > 1 && ix > FIELD.x && ix < FIELD.x + FIELD.w && iy > FIELD.y && iy < FIELD.y + FIELD.h) {
-      const p0 = last && Math.hypot(ix - last.x, iy - last.y) < 12 ? last : { x: ix, y: iy }, n = Math.max(1, Math.ceil(Math.hypot(ix - p0.x, iy - p0.y)));
-      for (let k = 1; k <= n; k++) workStrip(f, p0.x + ((ix - p0.x) * k) / n, p0.y + ((iy - p0.y) * k) / n, v.a, WORK_HALF, 'cultivate', 'wheat');
-      last = { x: ix, y: iy };
-    } else last = null;
-    // the last lane only needs to reach its far end
-    if (done === lanes - 1 && p.leg >= 0) done++;
+    for (let k = 0; k < n && done < lanes; k++) {
+      t += h;
+      const s = autoSteer(v, p, off), before = p.lane, leg = p.leg;
+      p = s.pilot;
+      if (leg < 0 && p.leg === 0) turns++;
+      if (p.lane !== before) done++;
+      const c = { up: p.engaged ? s.up : true, down: s.down, left: s.left, right: s.right };
+      v = step(v, c, h);
+      if (hold) v = laneHold(v, c, h);
+      if (v.speed < -1) backing += h;
+      const ix = v.x + Math.cos(v.a) * off, iy = v.y + Math.sin(v.a) * off;
+      if (v.speed > 1 && ix > FIELD.x && ix < FIELD.x + FIELD.w && iy > FIELD.y && iy < FIELD.y + FIELD.h) {
+        const p0 = last && Math.hypot(ix - last.x, iy - last.y) < 12 ? last : { x: ix, y: iy }, m = Math.max(1, Math.ceil(Math.hypot(ix - p0.x, iy - p0.y)));
+        for (let j = 1; j <= m; j++) workStrip(f, p0.x + ((ix - p0.x) * j) / m, p0.y + ((iy - p0.y) * j) / m, v.a, WORK_HALF, 'cultivate', 'wheat');
+        last = { x: ix, y: iy };
+      } else last = null;
+      // the last lane only needs to reach its far end
+      if (done === lanes - 1 && p.leg >= 0) done++;
+    }
   }
   return { f, v, p, t, turns, backing };
 }
@@ -97,6 +101,13 @@ describe('auto-steer', () => {
   it('leaves nothing behind with a lifter or a front header either', () => {
     expect(missed(pass(workOffset('roots')).f)).toBe(0);
     expect(missed(pass(workOffset('combine')).f)).toBe(0);
+  });
+
+  it('leaves nothing behind at a low frame rate and twice the pace', () => {
+    // 50 ms frames (the game's cap) at 2× pace: 0.1 s of machine time a frame
+    const frame = 0.05 * PACES[PACES.length - 1];
+    expect(subSteps(frame).n).toBeGreaterThan(1);
+    for (const rig of ['cultivate', 'roots', 'combine'] as const) expect(missed(pass(workOffset(rig), LANES, true, frame).f)).toBe(0);
   });
 
   it('backs round inside the farm and clear of the barn', () => {
