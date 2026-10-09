@@ -37,9 +37,10 @@ export class BarnMenu {
     this.el.className = 'menu barn-label';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'The barn');
-    this.el.style.left = pctX(DOOR_X + 21 / ZOOM); this.el.style.top = pctY(DOOR_Y);
+    this.el.style.left = pctX(DOOR_X + 14 / ZOOM);
+    this.el.style.top = pctY(DOOR_Y);
     stage.append(this.el);
-    this.arrows = [[-1, '▲', BARN.y + 12], [1, '▼', BARN.y + BARN.h - 22]].map(([d, sym, y]) => {
+    this.arrows = [[-1, '▲', BARN.y + 12], [1, '▼', BARN.y + BARN.h - 12]].map(([d, sym, y]) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'cv-arrow'; b.textContent = String(sym);
       b.setAttribute('aria-label', d === 1 ? 'Turn the carousel down' : 'Turn the carousel up');
@@ -57,22 +58,28 @@ export class BarnMenu {
     const key = JSON.stringify([v.season, v.crop, v.status, v.sel, v.next, v.lastJob]);
     if (key === this.key) return;
     this.key = key;
-    const m = v.items[v.sel];
-    const pills = (it: MachineItem) =>
-      (it.job === v.next ? '<span class="pill next">Next up</span>' : '') +
-      (it.job === v.lastJob ? '<span class="pill back">Just back</span>' : '') +
-      `<span class="pill ssn${it.season === v.season ? ' now' : ''}">${cap(it.season)} job</span>`;
+    const list = v.items.map((it, i) => {
+      const sel = i === v.sel;
+      const quiet = isQuiet(it, v.season, v.next) && !sel;
+      const pills = sel
+        ? (it.job === v.next ? '<span class="pill next">Next up</span>' : '') +
+          (it.job === v.lastJob ? '<span class="pill back">Just back</span>' : '') +
+          `<span class="pill ssn${it.season === v.season ? ' now' : ''}">${cap(it.season)} job</span>`
+        : '';
+      const inner = sel
+        ? `<div class="sel-row"><i></i><b>${it.name}</b><span class="verb">${it.verb}</span></div><div class="sel-pills">${pills}</div>`
+        : `<i></i>${it.name}`;
+      return `<button type="button" class="barn-item${sel ? ' sel' : ''}${quiet ? ' quiet' : ''}" data-i="${i}">${inner}</button>`;
+    }).join('');
     this.el.innerHTML = `
       <div class="mh"><span class="sdot" style="background:${SEASON_DOT[v.season]}"></span><b>${cap(v.season)}</b><span class="mc">· ${CROP_INFO[v.crop].name}</span></div>
       <p class="mstat">${v.status}</p>
-      <div class="cur"><b>${m.name}</b><span class="job">${m.verb}</span><div class="pills">${pills(m)}</div></div>
-      <div class="chips">${v.items.map((it, i) => `<button type="button" class="chip${i === v.sel ? ' sel' : ''}${isQuiet(it, v.season, v.next) ? ' quiet' : ''}" data-i="${i}"><i></i>${it.name}${it.job === v.next ? '<span class="pill next">Next up</span>' : ''}</button>`).join('')}</div>
+      <div class="barn-list">${list}</div>
       <div class="crops" role="group" aria-label="Crop for the field">${CROPS.map((c) => `<button type="button" data-crop="${c}" aria-pressed="${c === v.crop}">${CROP_INFO[c].name}</button>`).join('')}</div>
-      <div class="row"><button type="button" class="turn" data-d="-1" aria-label="Turn the carousel up">▲</button><button type="button" class="turn" data-d="1" aria-label="Turn the carousel down">▼</button><button type="button" class="go">Drive out</button></div>
-      <p class="hint">↑ ↓ turn the carousel · ← → crop · Enter drives out</p>`;
-    this.el.querySelectorAll<HTMLButtonElement>('.chip').forEach((b) => b.addEventListener('click', () => this.on.select(Number(b.dataset.i))));
+      <button type="button" class="go">Drive out <kbd>Enter</kbd></button>
+      <p class="hint">↑ ↓ machine · ← → crop</p>`;
+    this.el.querySelectorAll<HTMLButtonElement>('.barn-item').forEach((b) => b.addEventListener('click', () => this.on.select(Number(b.dataset.i))));
     this.el.querySelectorAll<HTMLButtonElement>('[data-crop]').forEach((b) => b.addEventListener('click', () => this.on.crop(b.dataset.crop as Crop)));
-    this.el.querySelectorAll<HTMLButtonElement>('.turn').forEach((b) => b.addEventListener('click', () => this.on.turn(Number(b.dataset.d))));
     this.el.querySelector<HTMLButtonElement>('.go')!.addEventListener('click', () => this.on.driveOut());
   }
 }

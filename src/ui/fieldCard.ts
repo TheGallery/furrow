@@ -16,23 +16,24 @@ export class FieldCard {
   private readonly head: HTMLButtonElement;
   private readonly body: HTMLElement;
   private readonly sum: HTMLElement;
-  private folded = false;
-  /** Folded for a barn visit, like the driving card; a header click still opens it. */
+  /** Folded by default as a bottom-left tab; a header click opens it. */
+  private folded = true;
+  /** Folded for a barn visit; a header click still opens it. */
   private tucked = false;
   private peek = false;
   private last = '';
 
   constructor(stage: HTMLElement, private readonly onFold: (folded: boolean) => void) {
     this.el = document.createElement('div');
-    this.el.className = 'menu field-card';
+    this.el.className = 'menu field-card folded';
     this.el.setAttribute('role', 'group');
     this.el.setAttribute('aria-label', 'Field');
     this.el.innerHTML = `
       <div class="fc-body" id="fc-body" aria-live="polite"></div>
-      <button type="button" class="dc-head" aria-controls="fc-body"><b>Field</b><span class="dc-sum"></span><span class="dc-fold" aria-hidden="true">▾</span></button>`;
-    this.head = this.el.querySelector('.dc-head')!;
+      <button type="button" class="fc-head" aria-controls="fc-body"><b>Field</b><span class="fc-sum"></span><span class="fc-fold" aria-hidden="true">▴</span></button>`;
+    this.head = this.el.querySelector('.fc-head')!;
     this.body = this.el.querySelector('.fc-body')!;
-    this.sum = this.el.querySelector('.dc-sum')!;
+    this.sum = this.el.querySelector('.fc-sum')!;
     this.head.addEventListener('click', () => {
       if (this.tucked && !this.peek && this.el.classList.contains('folded')) { this.peek = true; this.paintFold(); }
       else this.onFold(!this.el.classList.contains('folded'));
@@ -48,6 +49,7 @@ export class FieldCard {
     const folded = this.folded || (this.tucked && !this.peek);
     this.el.classList.toggle('folded', folded);
     this.head.setAttribute('aria-expanded', String(!folded));
+    this.head.querySelector('.fc-fold')!.textContent = folded ? '▴' : '▾';
   }
 
   /** Repaint from the field; cheap to call often, it only touches the page when the words change. */

@@ -157,14 +157,16 @@ describe('auto-steer', () => {
 
 describe('settings', () => {
   it('round-trips and falls back to the defaults for missing or damaged values', () => {
-    const s = { pace: 2, lanes: false, hold: true, auto: true, folded: true, fieldFolded: true };
+    const s = { pace: 2, lanes: false, hold: true, auto: true, fieldFolded: false };
     expect(decodeSettings(encodeSettings(s))).toEqual(s);
     expect(decodeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(decodeSettings('nope')).toEqual(DEFAULT_SETTINGS);
     expect(decodeSettings('{"pace":7,"lanes":"yes","auto":true}')).toEqual({ ...DEFAULT_SETTINGS, auto: true });
+    // the driving card's old fold flag is read past and dropped
+    expect(decodeSettings('{"pace":1,"folded":true}')).toEqual({ ...DEFAULT_SETTINGS, pace: 1 });
   });
 
-  it('starts with lane lines and lane hold on, auto-steer off and both cards open', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ pace: 0, lanes: true, hold: true, auto: false, folded: false, fieldFolded: false });
+  it('starts with lane lines and lane hold on, auto-steer off and the field card folded', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ pace: 0, lanes: true, hold: true, auto: false, fieldFolded: true });
   });
 });
