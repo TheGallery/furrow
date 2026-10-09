@@ -29,7 +29,7 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 
 .barn-label { position: absolute; width: calc(236 * var(--u)); transform: translate(0, -50%); opacity: 0; pointer-events: none; transition: opacity 0.45s ease, transform 0.45s ease; background: rgba(255, 253, 248, 0.97); border: 1px solid var(--line); border-radius: calc(12 * var(--u)); padding: calc(10 * var(--u)) calc(11 * var(--u)) calc(9 * var(--u)); box-shadow: 0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(70, 55, 35, 0.14); font-size: calc(12.5 * var(--u)); }
 .barn-label.open { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
-.barn-label::before { content: ""; position: absolute; left: -6px; top: 50%; width: calc(10 * var(--u)); height: calc(10 * var(--u)); background: var(--card); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateY(-50%) rotate(45deg); }
+.barn-label::before { content: ""; position: absolute; left: calc(-5 * var(--u)); top: 50%; width: calc(10 * var(--u)); height: calc(10 * var(--u)); background: var(--card); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateY(-50%) rotate(45deg); }
 .mh { display: flex; align-items: center; gap: calc(6 * var(--u)); font-size: calc(13 * var(--u)); }
 .sdot { width: calc(9 * var(--u)); height: calc(9 * var(--u)); border-radius: 50%; flex: none; }
 .mc { color: var(--muted); }

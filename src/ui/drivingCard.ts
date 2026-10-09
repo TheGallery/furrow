@@ -5,10 +5,10 @@ import { MAX_SPEED } from '../game/vehicle';
 export type Toggle = 'lanes' | 'hold' | 'auto';
 
 /** The guide switches, their names and the key that flips each one anywhere in the game. */
-export const TOGGLES: { key: Toggle; name: string; short: string; letter: string }[] = [
-  { key: 'lanes', name: 'Lane lines', short: 'lines', letter: 'L' },
-  { key: 'hold', name: 'Lane hold', short: 'hold', letter: 'H' },
-  { key: 'auto', name: 'Auto-steer', short: 'auto-steer', letter: 'A' },
+export const TOGGLES: { key: Toggle; name: string; letter: string }[] = [
+  { key: 'lanes', name: 'Lane lines', letter: 'L' },
+  { key: 'hold', name: 'Lane hold', letter: 'H' },
+  { key: 'auto', name: 'Auto-steer', letter: 'A' },
 ];
 
 export interface ClusterHandlers {

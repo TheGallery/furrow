@@ -161,9 +161,18 @@ describe('settings', () => {
     expect(decodeSettings(encodeSettings(s))).toEqual(s);
     expect(decodeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(decodeSettings('nope')).toEqual(DEFAULT_SETTINGS);
-    expect(decodeSettings('{"pace":7,"lanes":"yes","auto":true}')).toEqual({ ...DEFAULT_SETTINGS, auto: true });
+    expect(decodeSettings('{"v":2,"pace":7,"lanes":"yes","auto":true}')).toEqual({ ...DEFAULT_SETTINGS, auto: true });
     // the driving card's old fold flag is read past and dropped
     expect(decodeSettings('{"pace":1,"folded":true}')).toEqual({ ...DEFAULT_SETTINGS, pace: 1 });
+  });
+
+  it('folds the field card once for older saves, then remembers the player\'s choice', () => {
+    const old = '{"pace":1,"lanes":false,"hold":true,"auto":true,"fieldFolded":false,"folded":false}';
+    const migrated = decodeSettings(old);
+    expect(migrated).toEqual({ pace: 1, lanes: false, hold: true, auto: true, fieldFolded: true });
+    const opened = encodeSettings({ ...migrated, fieldFolded: false });
+    expect(decodeSettings(opened).fieldFolded).toBe(false);
+    expect(decodeSettings(encodeSettings(decodeSettings(opened))).fieldFolded).toBe(false);
   });
 
   it('starts with lane lines and lane hold on, auto-steer off and the field card folded', () => {

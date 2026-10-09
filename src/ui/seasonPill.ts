@@ -19,8 +19,6 @@ export class SeasonPill {
   constructor(stage: HTMLElement) {
     this.el = document.createElement('div');
     this.el.className = 'season-pill';
-    this.el.setAttribute('role', 'status');
-    this.el.setAttribute('aria-live', 'polite');
     this.el.innerHTML = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="9" fill="none" stroke="#ece5d4" stroke-width="4" />
@@ -44,7 +42,7 @@ export class SeasonPill {
       this.ring.setAttribute('stroke', SEASON_DOT[season]);
       this.ring.setAttribute('stroke-dasharray', `${dash} 56.55`);
     }
-    // the words only change every few seconds; leave the live region alone in between
+    // the words only change every few seconds; leave the DOM alone in between
     const key = `${season}|${label}|${harvested}|${clock.text}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
