@@ -4,7 +4,7 @@ export const H = 720;
 
 // The one continuous field. Soil state is kept on a fine grid the player never sees.
 export const FIELD = { x: 400, y: 110, w: 780, h: 520, r: 46 } as const;
-export const CELL = 4;
+export const CELL = 2;
 export const COLS = FIELD.w / CELL;
 export const ROWS = FIELD.h / CELL;
 

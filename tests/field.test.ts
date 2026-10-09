@@ -34,7 +34,7 @@ describe('soil state transitions', () => {
   it('works a strip square to the heading under the implement', () => {
     const f = createField();
     const { changed } = workStrip(f, FIELD.x + 100, FIELD.y + 100, 0, 20, 'cultivate', 'wheat');
-    expect(changed.length).toBe(11);
+    expect(changed.length).toBe((2 * 20) / CELL + 1);
     expect(f.soil[cellAt(FIELD.x + 100, FIELD.y + 90)]).toBe(CULTIVATED);
     expect(f.soil[cellAt(FIELD.x + 100 + CELL, FIELD.y + 100)]).toBe(RAW);
     expect(cellAt(FIELD.x - 1, FIELD.y)).toBe(-1);

@@ -32,18 +32,34 @@ export function renderBackground(b: Ctx, blend: Blend): void {
 }
 
 // The approved texture: seven soft lines per lane-width, wavier on freshly cultivated ground.
-const TEXTURE_Y: number[] = [];
-for (let l = 0; l < 6; l++) for (let k = 1; k < 8; k++) TEXTURE_Y.push(l * LANE_H + (k * LANE_H) / 8 + Math.sin(k) * 1.5);
+// Drawn once over the whole field so worked patches share one seamless pattern.
+function textureCanvas(amp: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = FIELD.w; c.height = FIELD.h;
+  const x = c.getContext('2d')!;
+  x.strokeStyle = 'rgba(80,55,30,0.22)'; x.lineWidth = 1.4;
+  for (let l = 0; l < 6; l++) for (let k = 1; k < 8; k++) {
+    const yy = l * LANE_H + (k * LANE_H) / 8 + Math.sin(k) * 1.5;
+    x.beginPath();
+    for (let px = 0; px <= FIELD.w; px += 2) { const y = yy + Math.sin(px * 0.18 + k) * amp; if (px) x.lineTo(px, y); else x.moveTo(px, y); }
+    x.stroke();
+  }
+  return c;
+}
 
 /** The worked-soil layer, painted cell by cell only where the soil changes. */
 export class SoilLayer {
   readonly canvas: HTMLCanvasElement;
   private readonly ctx: Ctx;
+  private readonly wavy: CanvasPattern;
+  private readonly flat: CanvasPattern;
 
   constructor() {
     this.canvas = document.createElement('canvas');
     this.canvas.width = FIELD.w; this.canvas.height = FIELD.h;
     this.ctx = this.canvas.getContext('2d')!;
+    this.wavy = this.ctx.createPattern(textureCanvas(1.6), 'no-repeat')!;
+    this.flat = this.ctx.createPattern(textureCanvas(0.4), 'no-repeat')!;
   }
 
   paintAll(f: Field): void {
@@ -51,22 +67,14 @@ export class SoilLayer {
     for (let i = 0; i < f.soil.length; i++) if (f.soil[i] !== RAW) this.paint(f, i);
   }
 
+  /** A soft disc a little wider than the cell, so worked ground has smooth edges, not squares. */
   paint(f: Field, i: number): void {
-    const c = this.ctx, s = f.soil[i], x = (i % COLS) * CELL, y = Math.floor(i / COLS) * CELL;
-    c.clearRect(x, y, CELL, CELL);
+    const c = this.ctx, s = f.soil[i];
     if (s === RAW) return;
-    c.fillStyle = s === STUBBLE ? P.stubble : s >= WATERED ? P.soilDark : P.soilWorked;
-    c.fillRect(x, y, CELL, CELL);
-    c.save(); c.beginPath(); c.rect(x, y, CELL, CELL); c.clip();
-    c.strokeStyle = 'rgba(80,55,30,0.22)'; c.lineWidth = 1.4;
-    const amp = s === CULTIVATED ? 1.6 : 0.4;
-    for (let k = 0; k < TEXTURE_Y.length; k++) {
-      const ty = TEXTURE_Y[k];
-      if (ty < y - 3 || ty > y + CELL + 3) continue;
-      const wave = (px: number) => ty + Math.sin(px * 0.18 + (k % 7) + 1) * amp;
-      c.beginPath(); c.moveTo(x - 1, wave(x - 1)); c.lineTo(x + CELL / 2, wave(x + CELL / 2)); c.lineTo(x + CELL + 1, wave(x + CELL + 1)); c.stroke();
-    }
-    c.restore();
+    const x = (i % COLS) * CELL + CELL / 2, y = Math.floor(i / COLS) * CELL + CELL / 2;
+    c.beginPath(); c.arc(x, y, CELL * 0.95, 0, Math.PI * 2);
+    c.fillStyle = s === STUBBLE ? P.stubble : s >= WATERED ? P.soilDark : P.soilWorked; c.fill();
+    c.fillStyle = s === CULTIVATED ? this.wavy : this.flat; c.fill();
   }
 }
 
