@@ -1,4 +1,5 @@
-import { CELLS, CROPS, type Field } from './field';
+import { CELLS, CROPS, CULTIVATED, RAW, SEEDED, STUBBLE, WATERED, type Field } from './field';
+import { BOUNDS } from './vehicle';
 import type { Crop, Job, Rig } from './types';
 
 export const SAVE_KEY = 'furrow.save.v1';
@@ -45,6 +46,9 @@ export function encodeSnapshot(s: Snapshot): string {
   });
 }
 
+const SOILS: readonly number[] = [RAW, CULTIVATED, SEEDED, WATERED, STUBBLE];
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 /** Parse a save; anything unexpected gives null so the game simply starts fresh. */
@@ -57,11 +61,12 @@ export function decodeSnapshot(text: string | null): Snapshot | null {
   if (!m || !num(m.x) || !num(m.y) || !num(m.a) || !RIGS.includes(m.rig as Rig) || !JOBS.includes(m.job as Job)) return null;
   const soil = fromB64(d.soil, CELLS), g = fromB64(d.growth, CELLS), crop = fromB64(d.cellCrop, CELLS);
   if (!soil || !g || !crop) return null;
+  if (soil.some((v) => !SOILS.includes(v)) || crop.some((v) => v >= CROPS.length)) return null;
   const growth = new Float32Array(CELLS);
   for (let i = 0; i < CELLS; i++) growth[i] = g[i] / 255;
   return {
     elapsed: d.elapsed, crop: d.crop as Crop, harvested: Math.max(0, Math.floor(d.harvested)), inBarn: d.inBarn === true,
-    machine: { x: m.x, y: m.y, a: m.a, rig: m.rig as Rig, job: m.job as Job },
+    machine: { x: clamp(m.x, BOUNDS.x0, BOUNDS.x1), y: clamp(m.y, BOUNDS.y0, BOUNDS.y1), a: m.a, rig: m.rig as Rig, job: m.job as Job },
     field: { soil, growth, crop },
   };
 }

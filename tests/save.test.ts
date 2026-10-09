@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CULTIVATED, WATERED, createField } from '../src/game/field';
+import { BOUNDS } from '../src/game/vehicle';
 import { decodeSnapshot, encodeSnapshot, type Snapshot } from '../src/game/save';
 
 describe('save and load', () => {
@@ -30,5 +31,16 @@ describe('save and load', () => {
     const ok = JSON.parse(encodeSnapshot({ elapsed: 0, crop: 'wheat', field: createField(), inBarn: false, harvested: 0, machine: { x: 1, y: 2, a: 0, rig: 'cultivate', job: 'cultivate' } }));
     expect(decodeSnapshot(JSON.stringify({ ...ok, soil: 'AAAA' }))).toBeNull();
     expect(decodeSnapshot(JSON.stringify({ ...ok, crop: 'turnip' }))).toBeNull();
+  });
+
+  it('rejects out-of-range cells and keeps the machine on screen', () => {
+    const base = (): Snapshot => ({ elapsed: 0, crop: 'wheat', field: createField(), inBarn: false, harvested: 0, machine: { x: 5000, y: -300, a: 0, rig: 'cultivate', job: 'cultivate' } });
+    const back = decodeSnapshot(encodeSnapshot(base()));
+    expect(back!.machine.x).toBe(BOUNDS.x1);
+    expect(back!.machine.y).toBe(BOUNDS.y0);
+    const badSoil = base(); badSoil.field.soil[3] = 4;
+    expect(decodeSnapshot(encodeSnapshot(badSoil))).toBeNull();
+    const badCrop = base(); badCrop.field.crop[3] = 3;
+    expect(decodeSnapshot(encodeSnapshot(badCrop))).toBeNull();
   });
 });

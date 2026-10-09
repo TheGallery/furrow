@@ -86,6 +86,9 @@ export function grow(f: Field, dt: number, season: Season): void {
   }
 }
 
+/** Share of the field another crop's ripe cells must cover before the barn mentions them. */
+export const OTHER_RIPE = 0.05;
+
 export interface FieldSummary {
   /** Bare ground (raw or stubble) as a fraction of the field. */
   bare: number;
@@ -95,19 +98,27 @@ export interface FieldSummary {
   watered: number;
   /** Ripe cells of the given crop. */
   ripe: number;
+  /** Another crop with ripe cells still standing, which only its own harvester can lift. */
+  otherRipe: Crop | null;
 }
 
 export function summarize(f: Field, crop: Crop): FieldSummary {
   const ci = CROPS.indexOf(crop);
-  let bare = 0, cultivated = 0, dry = 0, watered = 0, ripe = 0;
+  let bare = 0, cultivated = 0, dry = 0, watered = 0;
+  const ripeBy = CROPS.map(() => 0);
   for (let i = 0; i < CELLS; i++) {
     const s = f.soil[i];
     if (s === RAW || s === STUBBLE) bare++;
     else if (s === CULTIVATED) cultivated++;
     else {
       if (s === SEEDED) dry++; else watered++;
-      if (f.crop[i] === ci && f.growth[i] >= RIPE) ripe++;
+      if (f.growth[i] >= RIPE && f.crop[i] < CROPS.length) ripeBy[f.crop[i]]++;
     }
   }
-  return { bare: bare / CELLS, cultivated: cultivated / CELLS, dry: dry / CELLS, watered: watered / CELLS, ripe: ripe / CELLS };
+  let other = -1;
+  ripeBy.forEach((n, k) => { if (k !== ci && n >= OTHER_RIPE * CELLS && (other < 0 || n > ripeBy[other])) other = k; });
+  return {
+    bare: bare / CELLS, cultivated: cultivated / CELLS, dry: dry / CELLS, watered: watered / CELLS, ripe: ripeBy[ci] / CELLS,
+    otherRipe: other < 0 ? null : CROPS[other],
+  };
 }

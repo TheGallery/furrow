@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ease, select, settled, shortest, turn, wrap } from '../src/game/carousel';
-import type { FieldSummary } from '../src/game/field';
+import { CROPS, WATERED, createField, summarize, type FieldSummary } from '../src/game/field';
 import { isQuiet, machinesFor, nextUp, statusLine } from '../src/game/machines';
 
-const field = (o: Partial<FieldSummary>): FieldSummary => ({ bare: 0, cultivated: 0, dry: 0, watered: 0, ripe: 0, ...o });
+const field = (o: Partial<FieldSummary>): FieldSummary => ({ bare: 0, cultivated: 0, dry: 0, watered: 0, ripe: 0, otherRipe: null, ...o });
 
 describe('barn machines', () => {
   it('holds each crop its own planter and harvester', () => {
@@ -29,6 +29,19 @@ describe('barn machines', () => {
     expect(isQuiet(sprayer, 'spring', 'water')).toBe(false);
     expect(statusLine('winter', field({}), 'wheat')).toMatch(/Nothing needs doing/);
     expect(statusLine('autumn', field({ ripe: 0.5 }), 'carrot')).toBe('The carrots are ready to lift.');
+  });
+
+  it('points back to a crop left ripe after switching crops', () => {
+    const f = createField();
+    f.soil.fill(WATERED); f.crop.fill(CROPS.indexOf('wheat')); f.growth.fill(1);
+    const sum = summarize(f, 'carrot');
+    expect(sum.ripe).toBe(0);
+    expect(sum.otherRipe).toBe('wheat');
+    expect(nextUp('summer', sum)).toBe('harvest');
+    expect(statusLine('summer', sum, 'carrot')).toBe('Ripe wheat is still standing; pick wheat in the barn to bring it in.');
+    expect(statusLine('summer', field({ otherRipe: 'pumpkin' }), 'wheat')).toBe('Ripe pumpkins are still standing; pick pumpkins in the barn to bring them in.');
+    expect(summarize(f, 'wheat').otherRipe).toBeNull();
+    expect(nextUp('winter', sum)).toBeNull();
   });
 });
 

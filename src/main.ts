@@ -188,10 +188,11 @@ cv.addEventListener('click', (e) => {
 
 // ---------------- saving ----------------
 function save(): void {
+  const at = g.mode === 'leaving' ? g.to! : g.v;
   store.set(SAVE_KEY, encodeSnapshot({
     elapsed: g.elapsed, crop: g.crop, field: g.field, harvested: Math.floor(g.harvestCells / 60),
     inBarn: g.mode === 'parking' || g.mode === 'spin' || g.mode === 'menu',
-    machine: { x: g.v.x, y: g.v.y, a: g.v.a, rig: g.rig, job: g.job },
+    machine: { x: at.x, y: at.y, a: at.a, rig: g.rig, job: g.job },
   }));
 }
 setInterval(save, 5000);

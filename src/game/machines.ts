@@ -34,11 +34,11 @@ const NEEDS = 0.1;
 
 /**
  * Which job the barn marks "Next up". Winter is rest; otherwise the field decides:
- * ripe crop first, then bare ground, then seed, then water. Null when nothing needs doing.
+ * ripe crop first (this crop's, or another left standing), then bare ground, then seed, then water. Null when nothing needs doing.
  */
 export function nextUp(season: Season, f: FieldSummary): Job | null {
   if (season === 'winter') return null;
-  if (f.ripe >= 0.05) return 'harvest';
+  if (f.ripe >= 0.05 || f.otherRipe) return 'harvest';
   if (f.bare >= 0.5) return 'cultivate';
   if (f.cultivated >= NEEDS) return 'plant';
   if (f.dry >= NEEDS) return 'water';
@@ -49,7 +49,12 @@ export function nextUp(season: Season, f: FieldSummary): Job | null {
 export function statusLine(season: Season, f: FieldSummary, crop: Crop): string {
   if (season === 'winter') return 'Snow on the field. Nothing needs doing; stay as long as you like.';
   switch (nextUp(season, f)) {
-    case 'harvest': return CROP_INFO[crop].ripe;
+    case 'harvest':
+      if (f.ripe < 0.05 && f.otherRipe) {
+        const n = CROP_INFO[f.otherRipe].name.toLowerCase();
+        return `Ripe ${n} ${f.otherRipe === 'wheat' ? 'is' : 'are'} still standing; pick ${n} in the barn to bring ${f.otherRipe === 'wheat' ? 'it' : 'them'} in.`;
+      }
+      return CROP_INFO[crop].ripe;
     case 'cultivate': return season === 'spring' ? 'Spring is here. Time to work the soil.' : 'The ground is bare. Work the soil when you like.';
     case 'plant': return 'The soil is worked and ready for seed.';
     case 'water': return 'The seed is in. Give it a drink.';
