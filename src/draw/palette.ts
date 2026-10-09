@@ -10,6 +10,9 @@ export const P = {
 
 export type Ctx = CanvasRenderingContext2D;
 
+/** Each season's dot colour, in the season pill and the barn label. */
+export const SEASON_DOT = { spring: '#9ec48c', summer: '#e8c35c', autumn: '#e59a4a', winter: '#b9c6cf' } as const;
+
 export function rr(ctx: Ctx, x: number, y: number, w: number, h: number, r: number): void {
   r = Math.min(r, w / 2, h / 2);
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);

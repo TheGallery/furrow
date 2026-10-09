@@ -1,9 +1,9 @@
+import { SEASON_DOT } from '../draw/palette';
 import { BARN, DOOR_X, DOOR_Y, H, W, ZOOM } from '../game/constants';
 import { CROPS } from '../game/field';
 import { CROP_INFO, type MachineItem, isQuiet } from '../game/machines';
 import type { Crop, Job, Season } from '../game/types';
 
-const SDOT: Record<Season, string> = { spring: '#9ec48c', summer: '#e8c35c', autumn: '#e59a4a', winter: '#b9c6cf' };
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 // world position → percent of the view, for placing DOM over the canvas
 const pctX = (x: number) => `${((x * ZOOM) / W) * 100}%`;
@@ -63,7 +63,7 @@ export class BarnMenu {
       (it.job === v.lastJob ? '<span class="pill back">Just back</span>' : '') +
       `<span class="pill ssn${it.season === v.season ? ' now' : ''}">${cap(it.season)} job</span>`;
     this.el.innerHTML = `
-      <div class="mh"><span class="sdot" style="background:${SDOT[v.season]}"></span><b>${cap(v.season)}</b><span class="mc">· ${CROP_INFO[v.crop].name}</span></div>
+      <div class="mh"><span class="sdot" style="background:${SEASON_DOT[v.season]}"></span><b>${cap(v.season)}</b><span class="mc">· ${CROP_INFO[v.crop].name}</span></div>
       <p class="mstat">${v.status}</p>
       <div class="cur"><b>${m.name}</b><span class="job">${m.verb}</span><div class="pills">${pills(m)}</div></div>
       <div class="chips">${v.items.map((it, i) => `<button type="button" class="chip${i === v.sel ? ' sel' : ''}${isQuiet(it, v.season, v.next) ? ' quiet' : ''}" data-i="${i}"><i></i>${it.name}${it.job === v.next ? '<span class="pill next">Next up</span>' : ''}</button>`).join('')}</div>

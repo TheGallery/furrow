@@ -33,15 +33,17 @@ The arrow keys work as soon as the page loads; no click is needed. If the browse
 The **Driving** card in the bottom-left corner holds the same settings. Click its header to fold it to one line that still shows the pace and which guides are on; it folds itself while you are in the barn.
 
 - **Pace**: 1× (the original speed), 1½× or 2×. A faster pace keeps the same turning circle.
-- **Lane lines**: faint dashed lines along the lane edges, brighter while you drive on the field.
+- **Lane lines**: faint dashed lines along the lane edges, brighter while you drive on the field. While auto-steer drives, they also show the way it will go: soft dashes ahead, red where it will back up, and a dot where the implement meets the ground.
 - **Lane hold**: while you are not steering, the machine straightens and settles onto the middle of the nearest lane, so passes sit side by side. Steering always wins.
-- **Auto-steer**: once the machine is on the field it follows the lane and turns into the next one at the end; you hold ↑. ← → take over at any time.
+- **Auto-steer**: hold ↑ and, once the machine is on the field, it works along the lane until the implement reaches the far edge, then makes a three-point turn into the next lane: it stops, backs round, pulls across and swings into the row, so the ends of the lanes are worked too. Let go of ↑ and it rolls to a stop, keeping its place. ← →, or backing up with ↓, take over at any time.
 
 Lane lines and lane hold start on and auto-steer starts off. Furrow remembers the pace and each switch, and so does the mute button in the top-right corner.
 
+Beside it, the **Field** card shows what is planted: each crop, how much of the field it covers, its stage (sown, sprouting, growing, ripe or resting) and when it will be ripe, plus what is bare or ready for seed. Times are rounded, never ticking. It folds the same way, and folds itself in the barn too.
+
 ## How it plays
 
-- **The field.** Work the ground by driving over it: the implement works whatever it passes over.
+- **The field.** Work the ground by driving over it: the implement works whatever it passes over, a lane wide with a little overlap, so passes side by side leave no line between them.
   - The **cultivator** roughens bare ground.
   - The **planter** sows worked ground.
   - The **boom sprayer** waters what has been sown.
@@ -61,7 +63,7 @@ Lane lines and lane hold start on and auto-steer starts off. Furrow remembers th
   | Carrots | Precision planter | Root harvester |
   | Pumpkins | Row planter | Tractor + trailer |
 
-- **Seasons.** Spring, summer, autumn and winter each last about five minutes. The grass and hedges fade between them, and winter brings snow.
+- **Seasons.** Spring, summer, autumn and winter each last about five minutes. The grass and hedges fade between them, and winter brings snow. The season pill in the top-left corner fills a soft ring through the season and says when the next one comes, e.g. "autumn in about 3 min".
 - **Sound.** Soft wind, the odd bird, and a quiet engine hum while you drive, all generated in the browser.
 - **Saving.** Progress is kept in your browser's local storage and restored when you come back.
 
@@ -71,7 +73,7 @@ Lane lines and lane hold start on and auto-steer starts off. Furrow remembers th
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, what is planted, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
@@ -79,7 +81,7 @@ npm run typecheck  # TypeScript
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
 - `src/draw/` holds the canvas drawings: the field, the machines and the barn.
-- `src/ui/` holds the barn label and the driving card.
+- `src/ui/` holds the barn label, the driving card and the field card.
 - `src/audio.ts` holds the ambient sound.
 
 ## License

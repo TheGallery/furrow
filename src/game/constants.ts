@@ -10,10 +10,12 @@ export const ZOOM = 0.75;
 export const WORLD_W = W / ZOOM;
 export const WORLD_H = H / ZOOM;
 
-// Machines are drawn at this scale; implements cover about one approved "lane".
+// Machines are drawn at this scale; implements cover one approved "lane".
 export const SCALE = 1.5;
 export const LANE_H = 520 / 6;
-export const IMPLEMENT_WIDTH = LANE_H * 0.92;
+export const IMPLEMENT_WIDTH = LANE_H;
+/** Half the strip an implement works: a lane and a little overlap, so passes side by side leave no line between them. */
+export const WORK_HALF = LANE_H / 2 + 4;
 export const RIG_W = IMPLEMENT_WIDTH / SCALE;
 
 // The red barn on the left, its roll-up door facing the middle of the field.
