@@ -34,7 +34,7 @@ npm run dev      # open the printed local URL
 
 The arrow keys work as soon as the page loads; no click is needed. If the browser keeps the keyboard elsewhere (for example, the tab opened in the background or the address bar still has focus), the card at the top says "Click the field, then drive with the arrow keys", and one click on the field fixes it.
 
-The **Driving** card in the bottom-left corner holds the same settings. Click its header to fold it to one line that still shows the pace and which guides are on; it folds itself while you are in the barn.
+The dashboard in the bottom-right corner holds the same settings and stays in view, in the barn too. Its dial shows how fast the machine is going against the pace limit. Click a pace (1×, 1½× or 2×) to set it, or click a guide to switch it on or off; a lit lamp means the guide is on.
 
 - **Pace**: 1× (the original speed), 1½× or 2×. A faster pace keeps the same turning circle.
 - **Lane lines**: faint dashed lines along the lane edges, brighter while you drive on the field. While auto-steer drives, they also show the way it will go: soft dashes ahead, red where it will back up, and a dot where the implement meets the ground.
@@ -43,7 +43,7 @@ The **Driving** card in the bottom-left corner holds the same settings. Click it
 
 Lane lines and lane hold start on and auto-steer starts off. Furrow remembers the pace and each switch, and so does the mute button in the top-right corner.
 
-Beside it, the **Field** card shows what is planted: each crop, how much of the field it covers, its stage (sown, sprouting, growing, ripe or resting) and when it will be ripe, plus what is bare or ready for seed. Times are rounded, never ticking. It folds the same way, and folds itself in the barn too.
+The **Field** tab in the bottom-left corner shows what is planted. Click it to open the card: each crop, how much of the field it covers, its stage (sown, sprouting, growing, ripe or resting) and when it will be ripe, plus what is bare or ready for seed. Times are rounded, never ticking. It starts folded and folds itself while you are in the barn.
 
 ## How it plays
 
@@ -67,7 +67,7 @@ Beside it, the **Field** card shows what is planted: each crop, how much of the 
   | Carrots | Precision planter | Root harvester |
   | Pumpkins | Row planter | Tractor + trailer |
 
-- **Seasons.** Spring, summer, autumn and winter each last about five minutes. The grass and hedges fade between them, and winter brings snow. The season pill in the top-left corner fills a soft ring through the season and says when the next one comes, e.g. "autumn in about 3 min".
+- **Seasons.** Spring, summer, autumn and winter each last about five minutes. The grass and hedges fade between them, and winter brings snow. The season pill in the top-left corner fills a soft ring through the season, says what you are doing and when the next season comes, e.g. "winter in about 3 min", and counts this year's harvest.
 - **Sound.** Soft wind, the odd bird, and a quiet engine hum while you drive, all generated in the browser.
 - **Saving.** Progress is kept in your browser's local storage and restored when you come back.
 
@@ -85,7 +85,7 @@ npm run typecheck  # TypeScript
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
 - `src/draw/` holds the canvas drawings: the field, the machines and the barn.
-- `src/ui/` holds the barn label, the driving card and the field card.
+- `src/ui/` holds the barn label, the season pill, the dashboard and the field card.
 - `src/audio.ts` holds the ambient sound.
 
 ## License
