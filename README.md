@@ -23,10 +23,21 @@ npm run dev      # open the printed local URL
 | ↓ | Brake, then reverse | Turn the carousel down |
 | ← → | Steer (slowly when standing still) | Change the crop |
 | Enter / Space | | Drive out with the machine at the door |
+| − / = | Slower / faster pace | Slower / faster pace |
+| L | Lane lines on or off | Lane lines on or off |
+| H | Lane hold on or off | Lane hold on or off |
+| A | Auto-steer on or off | Auto-steer on or off |
 
 The arrow keys work as soon as the page loads; no click is needed. If the browser keeps the keyboard elsewhere (for example, the tab opened in the background or the address bar still has focus), the card at the top says "Click the field, then drive with the arrow keys", and one click on the field fixes it.
 
-The mute button in the top-right corner turns the sound on or off, and Furrow remembers your choice.
+The **Driving** card in the bottom-left corner holds the same settings. Click its header to fold it to one line that still shows the pace and which guides are on; it folds itself while you are in the barn.
+
+- **Pace**: 1× (the original speed), 1½× or 2×. A faster pace keeps the same turning circle.
+- **Lane lines**: faint dashed lines along the lane edges, brighter while you drive on the field.
+- **Lane hold**: while you are not steering, the machine straightens and settles onto the middle of the nearest lane, so passes sit side by side. Steering always wins.
+- **Auto-steer**: once the machine is on the field it follows the lane and turns into the next one at the end; you hold ↑. ← → take over at any time.
+
+Lane lines and lane hold start on and auto-steer starts off. Furrow remembers the pace and each switch, and so does the mute button in the top-right corner.
 
 ## How it plays
 
@@ -60,7 +71,7 @@ The mute button in the top-right corner turns the sound on or off, and Furrow re
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, pace and guides, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
@@ -68,7 +79,7 @@ npm run typecheck  # TypeScript
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
 - `src/draw/` holds the canvas drawings: the field, the machines and the barn.
-- `src/ui/` holds the barn label.
+- `src/ui/` holds the barn label and the driving card.
 - `src/audio.ts` holds the ambient sound.
 
 ## License
