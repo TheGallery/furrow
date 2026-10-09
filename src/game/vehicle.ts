@@ -19,14 +19,17 @@ export interface Controls {
 // A relaxing pace: about twenty seconds to cross the field.
 export const MAX_SPEED = 46;
 export const REVERSE_SPEED = 16;
-const ACCEL = 22;
-const BRAKE = 60;
-const COAST = 26;
+// Quick enough that a short tap visibly moves the machine, still calm at the top.
+const ACCEL = 60;
+const BRAKE = 90;
+const COAST = 40;
 const TURN_RATE = 0.85;
+// Share of full steering kept at a standstill, so Left/Right always answer.
+const STANDING_GRIP = 0.4;
 
 export const BOUNDS = { x0: 30, x1: W - 30, y0: 96, y1: H - 24 };
 
-/** Speed and heading after dt seconds of input. Steering needs some speed, like a real tractor. */
+/** Speed and heading after dt seconds of input. Steering is slower at a standstill but never dead. */
 export function drive(v: Vehicle, c: Controls, dt: number): Vehicle {
   let target = 0;
   if (c.up && !c.down) target = MAX_SPEED;
@@ -35,7 +38,7 @@ export function drive(v: Vehicle, c: Controls, dt: number): Vehicle {
   const rate = c.down && v.speed > 0 ? BRAKE : target === 0 ? COAST : opposing ? BRAKE : ACCEL;
   const speed = v.speed + Math.max(-rate * dt, Math.min(rate * dt, target - v.speed));
   const steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
-  const grip = Math.min(1, Math.abs(speed) / 18) * Math.sign(speed);
+  const grip = Math.max(STANDING_GRIP, Math.min(1, Math.abs(speed) / 18)) * (speed < 0 ? -1 : 1);
   const a = v.a + steer * TURN_RATE * grip * dt;
   return { x: v.x + Math.cos(a) * speed * dt, y: v.y + Math.sin(a) * speed * dt, a, speed };
 }
