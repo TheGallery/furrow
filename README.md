@@ -8,6 +8,10 @@ There is no money, there are no goals, and nothing ever dies.
 
 ## Play
 
+**Play it in your browser: https://thegallery.github.io/furrow/**
+
+Or run it locally:
+
 ```sh
 npm install
 npm run dev      # open the printed local URL
