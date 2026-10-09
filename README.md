@@ -60,7 +60,7 @@ The mute button in the top-right corner turns the sound on or off, and Furrow re
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, driving, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
