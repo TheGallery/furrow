@@ -24,6 +24,12 @@ describe('save and load', () => {
     expect(back!.field.growth[11]).toBeCloseTo(0.42, 2);
   });
 
+  it('starts fresh from a save made at the old, larger scale', () => {
+    const text = encodeSnapshot({ elapsed: 1, crop: 'wheat', field: createField(), inBarn: false, harvested: 0, machine: { x: 300, y: 370, a: 0, rig: 'cultivate', job: 'cultivate' } });
+    expect(decodeSnapshot(text)).not.toBeNull();
+    expect(decodeSnapshot(JSON.stringify({ ...JSON.parse(text), v: 1 }))).toBeNull();
+  });
+
   it('ignores missing or damaged saves', () => {
     expect(decodeSnapshot(null)).toBeNull();
     expect(decodeSnapshot('not json')).toBeNull();

@@ -4,7 +4,7 @@ import { SoilLayer, drawField, drawHud, drawSnow, renderBackground } from './dra
 import { drawRig } from './draw/machines';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
-import { BARN, DOOR_X, DOOR_Y, FIELD, H, IMPLEMENT_WIDTH, RIG_W, SCALE, W } from './game/constants';
+import { BARN, DOOR_X, DOOR_Y, FIELD, H, IMPLEMENT_WIDTH, RIG_W, SCALE, W, ZOOM } from './game/constants';
 import { CROPS, createField, grow, summarize, workStrip } from './game/field';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
@@ -195,7 +195,7 @@ window.addEventListener('pointerdown', (e) => {
 
 cv.addEventListener('click', (e) => {
   if (g.mode !== 'menu') return;
-  const r = cv.getBoundingClientRect(), x = ((e.clientX - r.left) * W) / r.width, y = ((e.clientY - r.top) * H) / r.height;
+  const r = cv.getBoundingClientRect(), x = ((e.clientX - r.left) * W) / r.width / ZOOM, y = ((e.clientY - r.top) * H) / r.height / ZOOM;
   if (!insideBarn(x, y)) return;
   let best = -1, bd = 1e9;
   g.items.forEach((_, i) => { const d = Math.abs(DOOR_Y + shortest(g.car.scroll, i, g.car.n) * SLOT - y); if (d < bd) { bd = d; best = i; } });
@@ -297,10 +297,11 @@ function drawMachine(c: Ctx, rig: Rig, p: Pose, t: number, working: boolean): vo
 function render(label: string, working: boolean): void {
   const t = g.clock, blend = seasonBlend(g.elapsed);
   const key = `${blend.from}>${blend.to}:${blend.k.toFixed(2)}:${scale}`;
-  if (key !== bgKey) { bgx.setTransform(scale, 0, 0, scale, 0, 0); renderBackground(bgx, blend); bgKey = key; }
+  const z = scale * ZOOM;
+  if (key !== bgKey) { bgx.setTransform(z, 0, 0, z, 0, 0); renderBackground(bgx, blend); bgKey = key; }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bg, 0, 0);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.setTransform(z, 0, 0, z, 0, 0);   // the world, in world units
   drawField(ctx, soil, g.field, t);
 
   // inside the barn: floor, turntable and the parked machines on the carousel
@@ -324,6 +325,7 @@ function render(label: string, working: boolean): void {
 
   barnRoof(ctx, g.roof, g.door, t);
   const sea = seasonAt(g.elapsed).season;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather and the HUD, in view units
   drawSnow(ctx, t, (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0));
   drawHud(ctx, sea, label, Math.floor(g.harvestCells / 60));
 }

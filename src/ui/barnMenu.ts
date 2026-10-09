@@ -1,9 +1,13 @@
+import { BARN, DOOR_X, DOOR_Y, H, W, ZOOM } from '../game/constants';
 import { CROPS } from '../game/field';
 import { CROP_INFO, type MachineItem, isQuiet } from '../game/machines';
 import type { Crop, Job, Season } from '../game/types';
 
 const SDOT: Record<Season, string> = { spring: '#9ec48c', summer: '#e8c35c', autumn: '#e59a4a', winter: '#b9c6cf' };
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+// world position → percent of the view, for placing DOM over the canvas
+const pctX = (x: number) => `${((x * ZOOM) / W) * 100}%`;
+const pctY = (y: number) => `${((y * ZOOM) / H) * 100}%`;
 
 export interface MenuView {
   season: Season;
@@ -33,12 +37,13 @@ export class BarnMenu {
     this.el.className = 'menu barn-label';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'The barn');
+    this.el.style.left = pctX(DOOR_X + 21 / ZOOM); this.el.style.top = pctY(DOOR_Y);
     stage.append(this.el);
-    this.arrows = [[-1, '▲', 22], [1, '▼', 79.5]].map(([d, sym, top]) => {
+    this.arrows = [[-1, '▲', BARN.y + 12], [1, '▼', BARN.y + BARN.h - 22]].map(([d, sym, y]) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'cv-arrow'; b.textContent = String(sym);
       b.setAttribute('aria-label', d === 1 ? 'Turn the carousel down' : 'Turn the carousel up');
-      b.style.top = `${top}%`;
+      b.style.left = pctX(BARN.x + 114); b.style.top = pctY(Number(y));
       b.addEventListener('click', () => on.turn(Number(d)));
       stage.append(b);
       return b;

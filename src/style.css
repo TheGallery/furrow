@@ -14,7 +14,7 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 .hint-card.gone { opacity: 0; }
 
 .menu { font-size: clamp(9px, 1.22cqw, 15px); line-height: 1.35; color: var(--ink); }
-.barn-label { position: absolute; left: 20.4%; top: 50%; width: 25%; transform: translate(-0.6em, -50%); opacity: 0; pointer-events: none; transition: opacity 0.45s ease, transform 0.45s ease; background: rgba(255, 253, 248, 0.97); border: 1px solid var(--line); border-radius: 1em; padding: 0.9em 1em 0.8em; box-shadow: 0 0.6em 1.6em rgba(70, 55, 35, 0.16); }
+.barn-label { position: absolute; width: 25%; transform: translate(-0.6em, -50%); opacity: 0; pointer-events: none; transition: opacity 0.45s ease, transform 0.45s ease; background: rgba(255, 253, 248, 0.97); border: 1px solid var(--line); border-radius: 1em; padding: 0.9em 1em 0.8em; box-shadow: 0 0.6em 1.6em rgba(70, 55, 35, 0.16); }
 .barn-label.open { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
 .barn-label::before { content: ""; position: absolute; left: -0.55em; top: 50%; width: 1em; height: 1em; background: inherit; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateY(-50%) rotate(45deg); }
 .mh { display: flex; align-items: center; gap: 0.5em; font-size: 1.12em; }
@@ -44,7 +44,7 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 .row { display: flex; gap: 0.4em; margin-top: 0.6em; align-items: center; }
 .row .turn { border: 1px solid var(--line); background: var(--card); border-radius: 0.6em; padding: 0.35em 0.7em; font: inherit; cursor: pointer; color: var(--ink); }
 .row .go { margin-left: auto; border: 0; background: var(--accent); color: #fff; border-radius: 0.6em; padding: 0.45em 1em; font: inherit; cursor: pointer; white-space: nowrap; }
-.cv-arrow { position: absolute; left: 10%; transform: translate(-50%, -50%); width: 2.6cqw; height: 2.6cqw; min-width: 22px; min-height: 22px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255, 253, 248, 0.95); color: var(--ink); font-size: clamp(9px, 1.1cqw, 14px); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.45s ease; }
+.cv-arrow { position: absolute; transform: translate(-50%, -50%); width: 2.6cqw; height: 2.6cqw; min-width: 22px; min-height: 22px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255, 253, 248, 0.95); color: var(--ink); font-size: clamp(9px, 1.1cqw, 14px); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.45s ease; }
 .cv-arrow.open { opacity: 1; pointer-events: auto; }
 
 @media (prefers-reduced-motion: reduce) { .barn-label, .cv-arrow, .chip, .hint-card { transition: none; } }

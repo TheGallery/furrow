@@ -1,5 +1,5 @@
 // The approved red barn with the carousel inside (review option D, roll-up door).
-import { BARN, DOOR_X, DOOR_Y, FIELD, LANE_H } from '../game/constants';
+import { BARN, DOOR_BOTTOM, DOOR_TOP, DOOR_X, DOOR_Y, FIELD, LANES, LANE_H } from '../game/constants';
 import { type Ctx, P, ease, rnd, rr } from './palette';
 
 const R = LANE_H / 2;
@@ -14,8 +14,8 @@ const arc = (p: Pts, cx: number, cy: number, a0: number, a1: number) => { const 
 function tracks(): Pts[] {
   const out: Pts = [{ x: DOOR_X, y: DOOR_Y }];
   line(out, DOOR_X + 30, DOOR_Y); arc(out, DOOR_X + 30, DOOR_Y - R, Math.PI / 2, 0); line(out, DOOR_X + 30 + R, laneY(0) + R); arc(out, DOOR_X + 30 + 2 * R, laneY(0) + R, Math.PI, 1.5 * Math.PI);
-  const home: Pts = [{ x: XL, y: laneY(5) }];
-  arc(home, XL, laneY(5) - R, Math.PI / 2, Math.PI); line(home, XL - R, DOOR_Y + R); arc(home, XL - 2 * R, DOOR_Y + R, 0, -Math.PI / 2); line(home, DOOR_X, DOOR_Y);
+  const home: Pts = [{ x: XL, y: laneY(LANES - 1) }];
+  arc(home, XL, laneY(LANES - 1) - R, Math.PI / 2, Math.PI); line(home, XL - R, DOOR_Y + R); arc(home, XL - 2 * R, DOOR_Y + R, 0, -Math.PI / 2); line(home, DOOR_X, DOOR_Y);
   return [out, home];
 }
 
@@ -39,11 +39,11 @@ export function barnGround(b: Ctx): void {
     b.stroke();
   }
   b.lineCap = 'butt';
-  b.fillStyle = '#e8dfc6'; rr(b, DOOR_X - 6, 298, 80, 144, 18); b.fill();
-  for (let i = 0; i < 70; i++) { b.fillStyle = `rgba(150,130,100,${0.18 + rnd(i + 700) * 0.15})`; b.beginPath(); b.arc(DOOR_X + rnd(i + 900) * 70, 304 + rnd(i + 950) * 132, 1.3, 0, Math.PI * 2); b.fill(); }
+  b.fillStyle = '#e8dfc6'; rr(b, DOOR_X - 6, DOOR_Y - 72, 80, 144, 18); b.fill();
+  for (let i = 0; i < 70; i++) { b.fillStyle = `rgba(150,130,100,${0.18 + rnd(i + 700) * 0.15})`; b.beginPath(); b.arc(DOOR_X + rnd(i + 900) * 70, DOOR_Y - 66 + rnd(i + 950) * 132, 1.3, 0, Math.PI * 2); b.fill(); }
   b.save(); b.shadowColor = 'rgba(70,55,35,0.28)'; b.shadowBlur = 16; b.shadowOffsetX = 5; b.shadowOffsetY = 8;
   b.fillStyle = '#b9a98a'; rr(b, BARN.x, BARN.y, BARN.w, BARN.h, 6); b.fill(); b.restore();
-  bale(b, 150, 112); bale(b, 192, 106); bale(b, 60, 624);
+  bale(b, BARN.x + 136, BARN.y - 34); bale(b, BARN.x + 178, BARN.y - 40); bale(b, BARN.x + 46, BARN.y + BARN.h + 30);
 }
 
 /** The barn floor: planks, carousel rails and the turntable in front of the door. */
@@ -54,7 +54,7 @@ export function barnFloor(ctx: Ctx, turntable: number): void {
   ctx.strokeStyle = 'rgba(120,90,55,0.13)'; ctx.lineWidth = 1; for (let yy = y + 16; yy < y + h; yy += 16) { ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); }
   ctx.strokeStyle = 'rgba(120,90,55,0.08)'; for (let i = 0; i < 40; i++) { const yy = y + 16 * Math.floor(rnd(i + 300) * h / 16), xx = x + rnd(i + 400) * w; ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + 16); ctx.stroke(); }
   ctx.strokeStyle = 'rgba(111,117,120,0.5)'; ctx.lineWidth = 2; for (const rx of [x + 12, x + w - 22]) { ctx.beginPath(); ctx.moveTo(rx, y); ctx.lineTo(rx, y + h); ctx.stroke(); }
-  const cx = 128; ctx.fillStyle = '#cdb184'; ctx.beginPath(); ctx.arc(cx, DOOR_Y, 74, 0, Math.PI * 2); ctx.fill();
+  const cx = x + 114; ctx.fillStyle = '#cdb184'; ctx.beginPath(); ctx.arc(cx, DOOR_Y, 74, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(120,90,55,0.35)'; ctx.lineWidth = 2; ctx.stroke();
   ctx.save(); ctx.translate(cx, DOOR_Y); ctx.rotate(turntable); ctx.strokeStyle = 'rgba(120,90,55,0.18)'; ctx.lineWidth = 1.2; for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(72, 0); ctx.stroke(); } ctx.restore();
   ctx.restore();
@@ -77,16 +77,16 @@ function cupola(ctx: Ctx, cx: number, cy: number, t: number, vane: boolean) {
 /** Roll-up door on the east wall: the curtain winds into the drum above the doorway. */
 function rollDoor(ctx: Ctx, wx: number, door: number) {
   const o = ease(door);
-  ctx.fillStyle = `rgba(62,44,32,${0.5 * o})`; ctx.fillRect(wx - 6, 318, 6, 104);
+  ctx.fillStyle = `rgba(62,44,32,${0.5 * o})`; ctx.fillRect(wx - 6, DOOR_TOP, 6, DOOR_BOTTOM - DOOR_TOP);
   if (o < 0.99) {
-    ctx.fillStyle = `rgba(196,200,201,${1 - o})`; ctx.fillRect(wx - 6, 318, 6, 104);
+    ctx.fillStyle = `rgba(196,200,201,${1 - o})`; ctx.fillRect(wx - 6, DOOR_TOP, 6, DOOR_BOTTOM - DOOR_TOP);
     ctx.strokeStyle = `rgba(111,117,120,${0.6 * (1 - o)})`; ctx.lineWidth = 1;
-    for (let yy = 322 + o * 8; yy < 420; yy += 8) { ctx.beginPath(); ctx.moveTo(wx - 6, yy); ctx.lineTo(wx, yy); ctx.stroke(); }
+    for (let yy = DOOR_TOP + 4 + o * 8; yy < DOOR_BOTTOM - 2; yy += 8) { ctx.beginPath(); ctx.moveTo(wx - 6, yy); ctx.lineTo(wx, yy); ctx.stroke(); }
   }
   const dr = 4 + 3 * o, dg = ctx.createLinearGradient(wx, 0, wx + 2 * dr, 0);
   dg.addColorStop(0, '#8b9194'); dg.addColorStop(0.5, '#d2d6d7'); dg.addColorStop(1, '#7c8285');
-  ctx.fillStyle = P.shadow; rr(ctx, wx + 2, 316, 2 * dr, 110, dr); ctx.fill();
-  ctx.fillStyle = dg; rr(ctx, wx, 313, 2 * dr, 110, dr); ctx.fill();
+  ctx.fillStyle = P.shadow; rr(ctx, wx + 2, DOOR_TOP - 2, 2 * dr, DOOR_BOTTOM - DOOR_TOP + 6, dr); ctx.fill();
+  ctx.fillStyle = dg; rr(ctx, wx, DOOR_TOP - 5, 2 * dr, DOOR_BOTTOM - DOOR_TOP + 6, dr); ctx.fill();
 }
 
 /**

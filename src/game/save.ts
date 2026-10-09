@@ -2,7 +2,7 @@ import { CELLS, CROPS, CULTIVATED, RAW, SEEDED, STUBBLE, WATERED, type Field } f
 import { BOUNDS } from './vehicle';
 import type { Crop, Job, Rig } from './types';
 
-export const SAVE_KEY = 'furrow.save.v1';
+export const SAVE_KEY = 'furrow.save.v2';
 
 export interface Snapshot {
   /** Game time in ms since the first spring. */
@@ -41,7 +41,7 @@ export function encodeSnapshot(s: Snapshot): string {
   const growth = new Uint8Array(CELLS);
   for (let i = 0; i < CELLS; i++) growth[i] = Math.round(Math.min(1, Math.max(0, s.field.growth[i])) * 255);
   return JSON.stringify({
-    v: 1, elapsed: Math.round(s.elapsed), crop: s.crop, machine: s.machine, inBarn: s.inBarn, harvested: s.harvested,
+    v: 2, elapsed: Math.round(s.elapsed), crop: s.crop, machine: s.machine, inBarn: s.inBarn, harvested: s.harvested,
     soil: toB64(s.field.soil), growth: toB64(growth), cellCrop: toB64(s.field.crop),
   });
 }
@@ -56,7 +56,7 @@ export function decodeSnapshot(text: string | null): Snapshot | null {
   if (!text) return null;
   let d: Record<string, unknown>;
   try { d = JSON.parse(text); } catch { return null; }
-  if (!d || d.v !== 1 || !num(d.elapsed) || d.elapsed < 0 || !CROPS.includes(d.crop as Crop) || !num(d.harvested)) return null;
+  if (!d || d.v !== 2 || !num(d.elapsed) || d.elapsed < 0 || !CROPS.includes(d.crop as Crop) || !num(d.harvested)) return null;
   const m = d.machine as Record<string, unknown> | undefined;
   if (!m || !num(m.x) || !num(m.y) || !num(m.a) || !RIGS.includes(m.rig as Rig) || !JOBS.includes(m.job as Job)) return null;
   const soil = fromB64(d.soil, CELLS), g = fromB64(d.growth, CELLS), crop = fromB64(d.cellCrop, CELLS);

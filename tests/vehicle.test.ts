@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOOR_X, DOOR_Y } from '../src/game/constants';
+import { BARN, DOOR_X, DOOR_Y } from '../src/game/constants';
 import { MAX_SPEED, drive, moveAllowed, step } from '../src/game/vehicle';
 
 const none = { up: false, down: false, left: false, right: false };
@@ -39,8 +39,8 @@ describe('driving', () => {
 
   it('enters the barn only through the door', () => {
     expect(moveAllowed({ x: DOOR_X + 2, y: DOOR_Y }, { x: DOOR_X - 2, y: DOOR_Y })).toBe(true);
-    expect(moveAllowed({ x: DOOR_X + 2, y: 200 }, { x: DOOR_X - 2, y: 200 })).toBe(false);
-    const blocked = step({ x: DOOR_X + 1, y: 200, a: Math.PI, speed: 40 }, { ...none, up: true }, 0.1);
+    expect(moveAllowed({ x: DOOR_X + 2, y: BARN.y + 40 }, { x: DOOR_X - 2, y: BARN.y + 40 })).toBe(false);
+    const blocked = step({ x: DOOR_X + 1, y: BARN.y + 40, a: Math.PI, speed: 40 }, { ...none, up: true }, 0.1);
     expect(blocked.speed).toBe(0);
     expect(blocked.x).toBe(DOOR_X + 1);
   });

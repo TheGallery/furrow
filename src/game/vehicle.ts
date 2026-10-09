@@ -1,4 +1,4 @@
-import { BARN, DOOR_BOTTOM, DOOR_TOP, DOOR_X, H, W } from './constants';
+import { BARN, DOOR_BOTTOM, DOOR_TOP, DOOR_X, WORLD_H, WORLD_W } from './constants';
 
 export interface Vehicle {
   x: number;
@@ -16,18 +16,20 @@ export interface Controls {
   right: boolean;
 }
 
-// A relaxing pace: about twenty seconds to cross the field.
-export const MAX_SPEED = 46;
-export const REVERSE_SPEED = 16;
+// World units per second. At ZOOM 0.5 the top speed is 32 screen px/s, gentler on screen
+// than the original 46, and about half a minute to drive one lane of the field.
+export const MAX_SPEED = 64;
+export const REVERSE_SPEED = 22;
 // Quick enough that a short tap visibly moves the machine, still calm at the top.
-const ACCEL = 60;
-const BRAKE = 90;
-const COAST = 40;
-const TURN_RATE = 0.85;
+const ACCEL = 84;
+const BRAKE = 126;
+const COAST = 56;
+// Radians per second: turns about as tightly, for the machine's size, as before.
+const TURN_RATE = 1.15;
 // Share of full steering kept at a standstill, so Left/Right always answer.
 const STANDING_GRIP = 0.4;
 
-export const BOUNDS = { x0: 30, x1: W - 30, y0: 96, y1: H - 24 };
+export const BOUNDS = { x0: 30, x1: WORLD_W - 30, y0: 96, y1: WORLD_H - 24 };
 
 /** Speed and heading after dt seconds of input. Steering is slower at a standstill but never dead. */
 export function drive(v: Vehicle, c: Controls, dt: number): Vehicle {
@@ -38,7 +40,7 @@ export function drive(v: Vehicle, c: Controls, dt: number): Vehicle {
   const rate = c.down && v.speed > 0 ? BRAKE : target === 0 ? COAST : opposing ? BRAKE : ACCEL;
   const speed = v.speed + Math.max(-rate * dt, Math.min(rate * dt, target - v.speed));
   const steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
-  const grip = Math.max(STANDING_GRIP, Math.min(1, Math.abs(speed) / 18)) * (speed < 0 ? -1 : 1);
+  const grip = Math.max(STANDING_GRIP, Math.min(1, Math.abs(speed) / 25)) * (speed < 0 ? -1 : 1);
   const a = v.a + steer * TURN_RATE * grip * dt;
   return { x: v.x + Math.cos(a) * speed * dt, y: v.y + Math.sin(a) * speed * dt, a, speed };
 }
