@@ -14,6 +14,7 @@ import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './g
 import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
+import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
 import { BarnMenu } from './ui/barnMenu';
 import { DrivingCard, TOGGLES, type Toggle } from './ui/drivingCard';
 
@@ -41,6 +42,7 @@ const g = {
   job: 'cultivate' as Job,
   lastJob: 'cultivate' as Job,
   v: { x: DOOR_X + 130, y: DOOR_Y, a: 0, speed: 0 } as Vehicle,
+  wheels: STRAIGHT as Wheels,
   mode: 'drive' as Mode,
   modeT: 0,
   from: null as Pose | null,
@@ -182,7 +184,7 @@ function startParking(): void {
 
 function openMenu(): void {
   g.mode = 'menu'; g.modeT = 0; g.pendingPick = false; g.outing = 0;
-  g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 };
+  g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 }; g.wheels = STRAIGHT;
   refreshMenu(); menu.open(); card.tuck(true);
 }
 
@@ -195,6 +197,7 @@ function pick(): void {
   g.mode = 'leaving'; g.modeT = 0;
   g.from = { x: parkX(m.rig), y: DOOR_Y, a: 0 };
   g.to = { x: DOOR_X + 24 - EXT[m.rig][0] * SCALE, y: DOOR_Y, a: 0 };
+  g.v = { ...g.from, speed: 0 };
   held.clear(); save();
   stage.focus({ preventScroll: true });
 }
@@ -270,7 +273,8 @@ function update(dt: number): { label: string; working: boolean } {
   g.growAcc += dt;
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
 
-  let label = 'In the barn', working = false;
+  let label = 'In the barn', working = false, steer = 0;
+  const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
     const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
@@ -278,6 +282,7 @@ function update(dt: number): { label: string; working: boolean } {
       const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v));
       g.pilot = a.pilot; c.left = a.left; c.right = a.right;
     } else g.pilot = null;
+    steer = (c.right ? 1 : 0) - (c.left ? 1 : 0);
     // a faster pace runs the machine's own clock faster: same turning circle, sooner
     const ds = s * PACES[settings.pace];
     g.v = step(g.v, c, ds);
@@ -316,6 +321,10 @@ function update(dt: number): { label: string; working: boolean } {
     if (g.modeT >= dur) { g.mode = 'drive'; g.modeT = 0; g.still = 0; }
   }
 
+  // the tyres follow the machine itself: they roll only while it moves, backwards when it reverses
+  const rolling = g.mode === wasMode && (g.mode === 'drive' || g.mode === 'parking' || g.mode === 'leaving');
+  g.wheels = turnWheels(g.wheels, steer, rolling ? rolled(was, g.v, g.v.a) / SCALE : 0, s);
+
   g.car = easeCarousel(g.car, dt);
   const near = Math.hypot(g.v.x - DOOR_X, g.v.y - DOOR_Y) < 210;
   const doorOpen = g.mode === 'parking' || g.mode === 'leaving' || (g.mode === 'drive' && near);
@@ -333,9 +342,9 @@ function update(dt: number): { label: string; working: boolean } {
   return { label, working };
 }
 
-function drawMachine(c: Ctx, rig: Rig, p: Pose, t: number, working: boolean): void {
+function drawMachine(c: Ctx, rig: Rig, p: Pose, t: number, working: boolean, wheels: Wheels = STRAIGHT): void {
   c.save(); c.translate(p.x, p.y); c.rotate(p.a); c.scale(SCALE, SCALE);
-  drawRig(c, rig, t, RIG_W, Math.min(1, g.outing / 1500), working); c.restore();
+  drawRig(c, rig, t, RIG_W, Math.min(1, g.outing / 1500), working, wheels); c.restore();
 }
 
 function render(label: string, working: boolean): void {
@@ -365,8 +374,8 @@ function render(label: string, working: boolean): void {
   if (g.mode === 'spin') {
     const mid = rigMid(g.rig);
     ctx.save(); ctx.translate(parkX(g.rig) + mid, DOOR_Y); ctx.rotate(Math.PI + g.spin * Math.PI); ctx.translate(-mid, 0); ctx.scale(SCALE, SCALE);
-    drawRig(ctx, g.rig, t, RIG_W, Math.min(1, g.outing / 1500), false); ctx.restore();
-  } else if (g.mode !== 'menu') drawMachine(ctx, g.rig, g.v, t, working);
+    drawRig(ctx, g.rig, t, RIG_W, Math.min(1, g.outing / 1500), false, g.wheels); ctx.restore();
+  } else if (g.mode !== 'menu') drawMachine(ctx, g.rig, g.v, t, working, g.wheels);
 
   barnRoof(ctx, g.roof, g.door, t);
   const sea = seasonAt(g.elapsed).season;
