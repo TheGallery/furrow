@@ -71,7 +71,7 @@ Lane lines and lane hold start on and auto-steer starts off. Furrow remembers th
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, pace and guides, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
