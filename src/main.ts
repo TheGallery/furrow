@@ -205,9 +205,10 @@ window.addEventListener('keydown', (e) => {
   audio.start();
   const onButton = e.target instanceof HTMLButtonElement;
   const k = controlFor(e.key, e.code);
-  if (e.key === '-' || e.key === '=' || e.key === '+') { e.preventDefault(); setPace(paceStep(settings.pace, e.key === '-' ? -1 : 1)); return; }
-  const toggle = !e.metaKey && !e.ctrlKey && !e.altKey && TOGGLES.find((t) => t.letter === e.key.toUpperCase());
-  if (toggle) { e.preventDefault(); setToggle(toggle.key, !settings[toggle.key]); return; }
+  const plain = !e.metaKey && !e.ctrlKey && !e.altKey;
+  if (plain && (e.key === '-' || e.key === '=' || e.key === '+')) { e.preventDefault(); setPace(paceStep(settings.pace, e.key === '-' ? -1 : 1)); return; }
+  const toggle = plain && TOGGLES.find((t) => t.letter === e.key.toUpperCase());
+  if (toggle) { e.preventDefault(); if (!e.repeat) setToggle(toggle.key, !settings[toggle.key]); return; }
   if (g.mode === 'menu') {
     if (k === 'up') { e.preventDefault(); g.car = turn(g.car, -1); refreshMenu(); }
     else if (k === 'down') { e.preventDefault(); g.car = turn(g.car, 1); refreshMenu(); }
@@ -273,7 +274,7 @@ function update(dt: number): { label: string; working: boolean } {
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
   if (g.mode === 'drive') {
     const c = { up: held.has('up'), down: held.has('down'), left: held.has('left'), right: held.has('right') };
-    if (settings.auto && !c.left && !c.right) {
+    if (settings.auto && !c.left && !c.right && (c.up || g.v.speed > 0)) {
       const a = autoSteer(g.v, g.pilot ?? pilotFrom(g.v));
       g.pilot = a.pilot; c.left = a.left; c.right = a.right;
     } else g.pilot = null;
