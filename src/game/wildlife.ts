@@ -56,7 +56,11 @@ export interface Wildlife {
   prints: Print[];
 }
 
-export interface WildScene { season: Season; v: Vehicle; rig: Rig }
+export interface WildScene {
+  season: Season; v: Vehicle; rig: Rig;
+  /** 0 by day, 1 through the night (daylight.ts): the hare and the fox come by more often after dusk. */
+  night?: number;
+}
 
 /** The first visit comes after this long, then the quiet spell between visits. */
 const FIRST_WAIT: [number, number] = [8000, 14000];
@@ -241,7 +245,8 @@ function stepFox(w: Wildlife, f: Fox, sc: WildScene, dt: number, snow: boolean, 
 export function stepWildlife(w: Wildlife, sc: WildScene, dt: number, rand: Rand = Math.random): void {
   w.t += dt;
   const snow = sc.season === 'winter';
-  if (!visiting(w) && (w.wait -= dt) <= 0) {
+  // the quiet spells pass twice as fast through the night
+  if (!visiting(w) && (w.wait -= dt * (1 + (sc.night ?? 0))) <= 0) {
     if (rand() < (sc.season === 'autumn' || snow ? 0.5 : 0.3)) spawnFox(w, sc, rand);
     else spawnHares(w, sc, rand);
     if (!visiting(w)) w.wait = quiet(sc.season, rand);

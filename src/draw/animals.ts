@@ -148,7 +148,8 @@ export function drawAnimals(ctx: Ctx, a: Animals, blend: Blend, season: Season):
   }
 
   if (spring > 0.05) { ctx.globalAlpha = spring; for (const c of a.chicks) at(ctx, c.x, c.y, c.a, () => chick(ctx, c.peck)); ctx.globalAlpha = 1; }
-  const puff = season === 'winter' ? 1 : 0;
+  // fluffed up against the cold, and when roosting for the night
+  const puff = season === 'winter' || a.roost ? 1 : 0;
   a.hens.forEach((h, i) => { if (!henIndoors(season, i)) at(ctx, h.x, h.y, h.a, () => hen(ctx, t, h.peck, h.brown, h.flap, puff)); });
 
   const g = a.dog;
