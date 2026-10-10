@@ -1,6 +1,6 @@
 import { Ambience } from './audio';
 import { barnFloor, barnRoof } from './draw/barn';
-import { SoilLayer, drawField, drawHud, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
+import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
@@ -17,8 +17,9 @@ import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
 import { BarnMenu } from './ui/barnMenu';
-import { DrivingCard, TOGGLES, type Toggle } from './ui/drivingCard';
+import { DashboardCluster, TOGGLES, type Toggle } from './ui/drivingCard';
 import { FieldCard } from './ui/fieldCard';
+import { SeasonPill } from './ui/seasonPill';
 
 type Mode = 'drive' | 'parking' | 'spin' | 'menu' | 'leaving';
 interface Pose { x: number; y: number; a: number }
@@ -65,7 +66,7 @@ const g = {
   pilot: null as Pilot | null,
   lanesAlpha: 0.35,
   menuAcc: 0,
-  cardAcc: 0,
+  cardAcc: 1000,   // so the field card and season pill paint on the first frame
   clock: 0,
 };
 
@@ -140,18 +141,18 @@ function setSettings(next: Partial<Settings>): void {
   Object.assign(settings, next);
   store.set(SETTINGS_KEY, encodeSettings(settings));
   g.pilot = null;
-  card.render(settings);
+  cluster.render(settings);
 }
 function setPace(i: number): void { setSettings({ pace: paceStep(i, 0) }); say(`Pace ${PACE_LABELS[settings.pace]}`); }
 function setToggle(t: Toggle, on: boolean): void { setSettings({ [t]: on }); say(`${TOGGLES.find((x) => x.key === t)!.name} ${on ? 'on' : 'off'}`); }
-// the card gives the keyboard back to the field after a click, so Space and Enter never re-press it
-const card = new DrivingCard(stage, {
+// the dashboard cluster gives the keyboard back to the field after a click
+const cluster = new DashboardCluster(stage, {
   pace: (i) => { setPace(i); stage.focus({ preventScroll: true }); },
   toggle: (t, on) => { setToggle(t, on); stage.focus({ preventScroll: true }); },
-  fold: (folded) => { setSettings({ folded }); stage.focus({ preventScroll: true }); },
 });
-card.render(settings);
-// what is planted, beside the driving card; folding it leaves the driving plan alone
+cluster.render(settings);
+const seasonPill = new SeasonPill(stage);
+// what is planted; folding it leaves the driving plan alone
 const fieldCard = new FieldCard(stage, (fieldFolded) => {
   settings.fieldFolded = fieldFolded; store.set(SETTINGS_KEY, encodeSettings(settings));
   fieldCard.setFolded(fieldFolded); stage.focus({ preventScroll: true });
@@ -195,7 +196,7 @@ function startParking(): void {
 function openMenu(): void {
   g.mode = 'menu'; g.modeT = 0; g.pendingPick = false; g.outing = 0;
   g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 }; g.wheels = STRAIGHT;
-  refreshMenu(); menu.open(); card.tuck(true); fieldCard.tuck(true);
+  refreshMenu(); menu.open(); fieldCard.tuck(true);
 }
 
 function pick(): void {
@@ -203,7 +204,7 @@ function pick(): void {
   if (!settled(g.car)) { g.pendingPick = true; return; }
   const m = g.items[g.car.sel];
   g.rig = m.rig; g.job = m.job; g.outing = 0;
-  menu.close(); card.tuck(false); fieldCard.tuck(false);
+  menu.close(); fieldCard.tuck(false);
   g.mode = 'leaving'; g.modeT = 0;
   g.from = { x: parkX(m.rig), y: DOOR_Y, a: 0 };
   g.to = { x: DOOR_X + 24 - EXT[m.rig][0] * SCALE, y: DOOR_Y, a: 0 };
@@ -282,9 +283,6 @@ function update(dt: number): { label: string; working: boolean } {
   if (info.year !== g.year) { g.year = info.year; g.harvestCells = 0; }
   g.growAcc += dt;
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
-  g.cardAcc += dt;
-  if (g.cardAcc >= 1000) { g.cardAcc = 0; fieldCard.render(g.field, g.elapsed); }
-
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
@@ -357,6 +355,13 @@ function update(dt: number): { label: string; working: boolean } {
   g.lanesAlpha += ((onTheField ? 1 : 0.35) - g.lanesAlpha) * Math.min(1, dt / 500);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) { toast.classList.add('gone'); paintHint(); } }
 
+  g.cardAcc += dt;
+  if (g.cardAcc >= 1000) {
+    g.cardAcc = 0;
+    fieldCard.render(g.field, g.elapsed);
+    seasonPill.render(season(), label, Math.floor(g.harvestCells / 60), seasonClock(g.elapsed));
+  }
+
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
   audio.update(s, engine, info.season);
   return { label, working };
@@ -367,7 +372,7 @@ function drawMachine(c: Ctx, rig: Rig, p: Pose, t: number, working: boolean, whe
   drawRig(c, rig, t, RIG_W, Math.min(1, g.outing / 1500), working, wheels); c.restore();
 }
 
-function render(label: string, working: boolean): void {
+function render(working: boolean): void {
   const t = g.clock, blend = seasonBlend(g.elapsed);
   const key = `${blend.from}>${blend.to}:${blend.k.toFixed(2)}:${scale}`;
   const z = scale * ZOOM;
@@ -403,17 +408,16 @@ function render(label: string, working: boolean): void {
   } else if (g.mode !== 'menu') drawMachine(ctx, g.rig, g.v, t, working, g.wheels);
 
   barnRoof(ctx, g.roof, g.door, t);
-  const sea = seasonAt(g.elapsed).season;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather and the HUD, in view units
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
   drawSnow(ctx, t, (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0));
-  drawHud(ctx, sea, label, Math.floor(g.harvestCells / 60), seasonClock(g.elapsed));
+  cluster.updateSpeed(g.v.speed);
 }
 
 let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min(50, now - last); last = now;
-  const { label, working } = update(dt);
-  render(label, working);
+  const { working } = update(dt);
+  render(working);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

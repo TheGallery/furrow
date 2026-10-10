@@ -2,7 +2,7 @@ import { BARN, CELL, COLS, FIELD, H, LANES, LANE_H, ROWS, W, WORLD_H, WORLD_W, Z
 import { CROPS, CULTIVATED, type Field, RAW, SEEDED, STUBBLE, WATERED } from '../game/field';
 import type { Crop, Season } from '../game/types';
 import { barnGround } from './barn';
-import { type Ctx, P, SEASON_DOT, mix, rnd, rr } from './palette';
+import { type Ctx, P, mix, rnd, rr } from './palette';
 
 export interface Blend { from: Season; to: Season; k: number }
 
@@ -188,31 +188,4 @@ export function drawSnow(ctx: Ctx, t: number, amount: number): void {
   ctx.fill();
 }
 
-/**
- * The season pill, top left: a soft ring that fills through the season, the season and what the
- * machine is doing, and when the next season comes ("summer in about 3 min").
- */
-export function drawHud(ctx: Ctx, season: Season, label: string, harvested: number, clock: { k: number; text: string }): void {
-  ctx.font = '600 22px ui-sans-serif, -apple-system, sans-serif';
-  const text = `${season[0].toUpperCase() + season.slice(1)}  ·  ${label}`;
-  const tw = ctx.measureText(text).width;
-  ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
-  const after = `  ·  ${clock.text}`, aw = ctx.measureText(after).width;
-  const w = 70 + tw + aw + 22;
-  // top left, above the barn; the driving card has the bottom left
-  ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, 24, 74, w, 42, 21); ctx.fill();
-  const cx = 52, cy = 95;
-  ctx.lineWidth = 4; ctx.lineCap = 'round';
-  ctx.strokeStyle = '#ece5d4'; ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = SEASON_DOT[season]; ctx.beginPath(); ctx.arc(cx, cy, 11, -Math.PI / 2, -Math.PI / 2 + Math.max(0.05, clock.k) * Math.PI * 2); ctx.stroke();
-  ctx.font = '600 22px ui-sans-serif, -apple-system, sans-serif';
-  ctx.fillStyle = '#3b4038'; ctx.fillText(text, 72, 102);
-  ctx.font = '500 18px ui-sans-serif, -apple-system, sans-serif';
-  ctx.fillStyle = '#7a7f72'; ctx.fillText(after, 72 + tw, 102);
-  if (harvested) {
-    const ht = `Harvested this year: ${harvested}`;
-    const hw = ctx.measureText(ht).width + 36;
-    ctx.fillStyle = 'rgba(255,253,248,0.9)'; rr(ctx, W - hw - 24, H - 62, hw, 36, 18); ctx.fill();
-    ctx.fillStyle = '#3b4038'; ctx.fillText(ht, W - hw - 6, H - 38);
-  }
-}
+
