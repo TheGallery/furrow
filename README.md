@@ -80,14 +80,14 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, what is planted, wind and cloud shadows, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, animals, what is planted, wind and cloud shadows, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
-- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather and the birds.
+- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather, the birds and the animals.
 - `src/ui/` holds the barn label, the season pill, the dashboard and the field card.
 - `src/audio.ts` holds the ambient sound.
 
