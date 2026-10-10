@@ -1,4 +1,5 @@
 import { Ambience } from './audio';
+import { drawAnimals } from './draw/animals';
 import { barnFloor, barnRoof } from './draw/barn';
 import { drawFlyingBirds, drawGroundBirds } from './draw/birds';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
@@ -13,6 +14,7 @@ import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, 
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonClock } from './game/almanac';
 import { chirpPan, createBirds, updateBirds } from './game/birds';
+import { createAnimals, updateAnimals } from './game/animals';
 import { seasonAt, seasonBlend } from './game/season';
 import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
@@ -84,6 +86,8 @@ if (saved) {
   g.v = { x: saved.machine.x, y: saved.machine.y, a: saved.machine.a, speed: 0 };
   g.items = machinesFor(g.crop);
 }
+// the sheep, hens and dog round the barn; the flock starts out on the field when the game opens in winter
+const animals = createAnimals(seasonAt(g.elapsed).season);
 
 // ---------------- canvas & layers ----------------
 const stage = document.getElementById('stage')!;
@@ -372,6 +376,7 @@ function update(dt: number): { label: string; working: boolean } {
 
   const off = workOffset(g.rig);
   updateBirds(g.birds, { season: info.season, working, tines: { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, v: g.v, rig: g.rig }, dt);
+  updateAnimals(animals, { season: info.season, v: g.v, rig: g.rig, driving: g.mode === 'drive' }, dt);
 
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
   audio.update(s, engine, info.season, gustAt(g.wind, g.v.x));
@@ -400,6 +405,7 @@ function render(working: boolean): void {
   }
 
   drawGroundBirds(ctx, g.birds);
+  drawAnimals(ctx, animals, blend, season());
 
   // inside the barn: floor, turntable and the parked machines on the carousel
   barnFloor(ctx, g.spin * Math.PI);
