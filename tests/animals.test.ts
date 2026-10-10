@@ -70,7 +70,7 @@ describe('where the animals live', () => {
   const foot = turnFootprint();
 
   it('names turn bands that hold every headland turn auto-steer makes', () => {
-    for (const p of foot) if (p.x < FIELD.x || p.x > FIELD.x + FIELD.w) expect(inTurnBand(p.x)).toBe(true);
+    expect(foot.filter((p) => (p.x < FIELD.x || p.x > FIELD.x + FIELD.w) && !inTurnBand(p.x))).toEqual([]);
   });
 
   it('keeps the pen, the yard, the dog\'s spots and the winter field clear of the turns', () => {
