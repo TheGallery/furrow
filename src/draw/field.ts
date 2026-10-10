@@ -4,6 +4,7 @@ import type { Crop, Season } from '../game/types';
 import { drawPen } from './animals';
 import { barnGround } from './barn';
 import { type Ctx, P, mix, rnd, rr } from './palette';
+import { drawOldTracks } from './wildlife';
 
 export interface Blend { from: Season; to: Season; k: number }
 
@@ -25,6 +26,7 @@ export function renderBackground(b: Ctx, blend: Blend): void {
     blob(WORLD_W - 26 - rnd(i + 4) * 24, y + 20, 18, i, false);
   }
   barnGround(b);
+  drawOldTracks(b, snow);
   drawPen(b);
   b.save(); b.shadowColor = 'rgba(70,55,35,0.22)'; b.shadowBlur = 18; b.shadowOffsetY = 4;
   b.fillStyle = P.soil; rr(b, FIELD.x, FIELD.y, FIELD.w, FIELD.h, FIELD.r); b.fill(); b.restore();
