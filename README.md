@@ -72,6 +72,7 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 - **Birds.** Outside summer, gulls follow the work and settle on the freshly worked strip (rooks in autumn), lifting as you come back past. Swallows loop over the summer crop, and sparrows hop along the hedge tops, with a robin in winter.
 - **Animals.** Sheep graze in a paddock under the barn, with lambs in spring, shorn in summer and snowy-backed in winter, when the flock walks out to winter on the field and comes home again in spring. Hens scratch about among the bales (chicks in spring), and the farm dog trots out to pace you from the top verge and curls up by the bales in winter. They all step aside long before the machine reaches them and never settle where auto-steer turns.
 - **Wildlife at the edges.** Now and then a hare sits out on the verge or the edge of the field (in spring two may box), or a fox trots along the top verge. They leave as the machine comes near and never settle where auto-steer turns. In winter they leave tracks across the snowy grass.
+- **The neighbours' lane.** A quiet farm lane runs along the bottom of the farm, under the field, and every so often someone passes by: one at a time, with long empty spells between. Who comes changes with the season: walkers and the odd van all year, cyclists in spring and summer, a flock moved along with a dog in spring and autumn, a neighbour's tractor with bales in summer and with pumpkins in autumn, and feed going out in winter. Walkers wave while you work the low end of the field, and anyone on the lane slows and waits if the machine noses out in their way.
 - **Sound.** Soft wind that swells as a gust passes, the odd bird (heard from where the birds are), and a quiet engine hum while you drive, all generated in the browser.
 - **Saving.** Progress is kept in your browser's local storage and restored when you come back.
 
@@ -81,14 +82,14 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, animals, what is planted, wind and cloud shadows, wildlife, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, animals, the neighbours' lane, what is planted, wind and cloud shadows, wildlife, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
-- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather, the birds, the animals and the wildlife.
+- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather, the birds, the animals, the wildlife and the neighbours' lane.
 - `src/ui/` holds the barn label, the season pill, the dashboard and the field card.
 - `src/audio.ts` holds the ambient sound.
 
