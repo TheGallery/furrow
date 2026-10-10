@@ -1,8 +1,9 @@
-import { BARN, CELL, COLS, FIELD, H, LANES, LANE_H, ROWS, W, WORLD_H, WORLD_W, ZOOM } from '../game/constants';
+import { BARN, CELL, COLS, FIELD, H, LANE, LANES, LANE_H, ROWS, W, WORLD_H, WORLD_W, ZOOM } from '../game/constants';
 import { CROPS, CULTIVATED, type Field, RAW, SEEDED, STUBBLE, WATERED } from '../game/field';
 import type { Crop, Season } from '../game/types';
 import { drawPen } from './animals';
 import { barnGround } from './barn';
+import { laneGround } from './lane';
 import { type Ctx, P, mix, rnd, rr } from './palette';
 import { drawOldTracks } from './wildlife';
 
@@ -14,17 +15,22 @@ export function renderBackground(b: Ctx, blend: Blend): void {
   const wt = (s: Season) => (from === s ? 1 - k : 0) + (to === s ? k : 0);
   b.fillStyle = mix(P.grass[from], P.grass[to], k); b.fillRect(0, 0, WORLD_W, WORLD_H);
   const hedge = mix(P.hedge[from], P.hedge[to], k), snow = wt('winter'), bloom = wt('spring');
-  const blob = (x: number, y: number, r: number, i: number, caps: boolean) => {
+  // `cap` sizes the snow and blossom to a smaller hedge
+  const blob = (x: number, y: number, r: number, i: number, caps: boolean, cap = 1) => {
     b.fillStyle = hedge; b.beginPath(); b.arc(x, y, r, 0, Math.PI * 2); b.fill();
-    if (caps && snow > 0) { b.fillStyle = `rgba(251,252,253,${snow})`; b.beginPath(); b.ellipse(x, y - 12, 16, 6, 0, 0, Math.PI * 2); b.fill(); }
-    if (caps && bloom > 0 && i % 2) { b.fillStyle = `rgba(244,210,220,${bloom})`; b.beginPath(); b.arc(x - 8, y - 8, 4, 0, Math.PI * 2); b.fill(); }
+    if (caps && snow > 0) { b.fillStyle = `rgba(251,252,253,${snow})`; b.beginPath(); b.ellipse(x, y - 12 * cap, 16 * cap, 6 * cap, 0, 0, Math.PI * 2); b.fill(); }
+    if (caps && bloom > 0 && i % 2) { b.fillStyle = `rgba(244,210,220,${bloom})`; b.beginPath(); b.arc(x - 8 * cap, y - 8 * cap, 4, 0, Math.PI * 2); b.fill(); }
   };
   for (let i = 0; i < Math.ceil(WORLD_W / 50); i++) blob(30 + i * 50, 52 + Math.sin(i * 1.7) * 6, 24 + rnd(i) * 8, i, true);
+  // the side hedges stop short of the lane
   for (let i = 0; i < Math.ceil((WORLD_H - 200) / 60); i++) {
     const x = 40 + rnd(i + 4) * 60, y = 160 + i * 60;
-    if (y < BARN.y - 34 || y > BARN.y + BARN.h + 34) blob(x, y, 18, i, false);
-    blob(WORLD_W - 26 - rnd(i + 4) * 24, y + 20, 18, i, false);
+    if ((y < BARN.y - 34 || y > BARN.y + BARN.h + 34) && y + 18 < LANE.y) blob(x, y, 18, i, false);
+    if (y + 38 < LANE.y) blob(WORLD_W - 26 - rnd(i + 4) * 24, y + 20, 18, i, false);
   }
+  // the neighbours' lane along the bottom, and the hedge beyond it
+  laneGround(b, snow);
+  for (let i = 0, x = -10; x < WORLD_W + 30; i++, x += 36 + rnd(i + 20) * 10) blob(x, WORLD_H - 4 + Math.sin(i * 1.7) * 3, 15 + rnd(i + 40) * 4, i, true, 0.65);
   barnGround(b);
   drawOldTracks(b, snow);
   drawPen(b);

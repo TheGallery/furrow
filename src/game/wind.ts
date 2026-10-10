@@ -1,6 +1,6 @@
 // The weather overhead: soft cloud shadows drifting across the farm, and gusts that blow petals,
 // seed fluff or leaves off the hedges. Nothing here touches the field or the machine.
-import { BARN, WORLD_H, WORLD_W } from './constants';
+import { BARN, LANE, WORLD_H, WORLD_W } from './constants';
 import type { Season } from './types';
 
 export type Rand = () => number;
@@ -76,7 +76,7 @@ export function stepWind(w: Wind, dt: number, season: Season, rand: Rand = Math.
     const top = gust.front > 300 || rand() < 0.6, above = rand() < 0.5;
     w.bits.push({
       x: top ? Math.max(0, gust.front - rand() * 200) : between(rand, SIDE_HEDGE),
-      y: top ? between(rand, TOP_HEDGE) : between(rand, above ? [140, BARN.y - 34] : [BARN.y + BARN.h + 34, WORLD_H - 60]),
+      y: top ? between(rand, TOP_HEDGE) : between(rand, above ? [140, BARN.y - 34] : [BARN.y + BARN.h + 34, LANE.y - 20]),
       vx: 50 + rand() * 35, vy: -6 + rand() * 20,
       spin: rand() * 6, turn: -2 + rand() * 4,
       kind, age: 0, life: 7000 + rand() * 4000, seed: rand() * 9, tint: rand(),

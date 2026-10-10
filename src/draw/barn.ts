@@ -19,7 +19,7 @@ function tracks(): Pts[] {
   return [out, home];
 }
 
-function bale(b: Ctx, x: number, y: number) {
+export function bale(b: Ctx, x: number, y: number): void {
   b.fillStyle = P.shadow; rr(b, x - 15, y - 7, 34, 22, 9); b.fill();
   b.fillStyle = P.wheat; rr(b, x - 17, y - 11, 34, 22, 9); b.fill();
   b.strokeStyle = 'rgba(150,120,50,0.35)'; b.lineWidth = 1.2;

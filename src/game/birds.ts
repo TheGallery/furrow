@@ -1,4 +1,4 @@
-import { BARN, FIELD, SCALE, WORK_HALF, WORLD_H, WORLD_W } from './constants';
+import { BARN, FIELD, LANE, SCALE, WORK_HALF, WORLD_H, WORLD_W } from './constants';
 import { EXT } from './machines';
 import type { Rig, Season } from './types';
 import type { Vehicle } from './vehicle';
@@ -72,7 +72,7 @@ export const LANDING = { x0: FIELD.x + 24, x1: FIELD.x + FIELD.w - 24, y0: FIELD
 
 /**
  * The hedge tops a small bird can sit on: the top hedge (above the machine's reach) and the hedge by
- * the barn, laid out as renderBackground lays them. The right-hand hedge sits in the turn band, so not there.
+ * the barn down to the lane, laid out as renderBackground lays them. The right-hand hedge sits in the turn band, so not there.
  */
 export const PERCHES: readonly { x: number; y: number }[] = (() => {
   const rnd = (i: number) => { const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); };
@@ -80,7 +80,7 @@ export const PERCHES: readonly { x: number; y: number }[] = (() => {
   for (let i = 0; i < Math.ceil(WORLD_W / 50); i++) out.push({ x: 36 + i * 50, y: 40 + Math.sin(i * 1.7) * 6 });
   for (let i = 0; i < Math.ceil((WORLD_H - 200) / 60); i++) {
     const y = 160 + i * 60;
-    if (y < BARN.y - 34 || y > BARN.y + BARN.h + 34) out.push({ x: 40 + rnd(i + 4) * 60, y: y - 6 });
+    if ((y < BARN.y - 34 || y > BARN.y + BARN.h + 34) && y + 18 < LANE.y) out.push({ x: 40 + rnd(i + 4) * 60, y: y - 6 });
   }
   return out;
 })();

@@ -43,4 +43,8 @@ export const DOOR_TOP = DOOR_Y - 52;
 export const DOOR_BOTTOM = DOOR_Y + 52;
 export const BARN = { x: BARN_X, y: DOOR_Y - BARN_H / 2, w: BARN_W, h: BARN_H } as const;
 
+// The neighbours' lane along the bottom of the farm, under the field and clear of the machine's reach.
+const LANE_Y = FIELD.y + FIELD.h + 18;
+export const LANE = { y: LANE_Y, h: WORLD_H - 24 - LANE_Y } as const;
+
 export const SEASON_MS = 5 * 60 * 1000;

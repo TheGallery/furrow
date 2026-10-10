@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type BirdScene, type Birds, FLOCK, HEDGE_SHY, LANDING, LIFT_DIST, PERCHES, STAY_MS, SWALLOWS, chirpPan, createBirds, machineDist, swallows, trailPoint, updateBirds } from '../src/game/birds';
-import { FIELD, SCALE } from '../src/game/constants';
+import { FIELD, LANE, SCALE } from '../src/game/constants';
 import { workOffset } from '../src/game/machines';
 import type { Season } from '../src/game/types';
 import { MAX_SPEED, type Vehicle } from '../src/game/vehicle';
@@ -119,6 +119,7 @@ describe('hedge birds', () => {
     for (const p of PERCHES) {
       const above = p.y < FIELD.y - 40, byTheBarn = p.x < FIELD.x - 200;
       expect(above || byTheBarn).toBe(true);
+      expect(p.y).toBeLessThan(LANE.y - 18);
     }
   });
 
