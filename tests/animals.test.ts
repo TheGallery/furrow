@@ -138,6 +138,19 @@ describe('sheep', () => {
     expect(ewes(a).some((s) => s.x > PEN.x + PEN.w + 40)).toBe(true);
   });
 
+  it('step aside only as far as the pen\'s rails, and settle again once the machine has gone', () => {
+    const rand = seeded(8), a = createAnimals('spring', rand), e = ewes(a)[0];
+    e.x = PEN.x + PEN.w / 2; e.y = PEN.y + 12; e.state = 'graze'; e.timer = 1e9;
+    const passing: Vehicle = { x: PEN.x + PEN.w + 40, y: e.y + 10, a: Math.PI, speed: 0 };
+    expect(inTheWay(passing, 'cultivate', e.x, e.y, 70)).toBe(true);
+    expect(inBox(PEN, stepAside(passing, e, PEN))).toBe(false);
+    updateAnimals(a, { season: 'spring', v: passing, rig: 'cultivate', driving: true }, DT, rand);
+    expect(e.state).toBe('walk');
+    expect(inBox(PEN, { x: e.tx, y: e.ty }, -8)).toBe(true);
+    wait(a, { season: 'spring', v: PARKED, rig: 'cultivate', driving: false }, 10000, rand);
+    expect(e.state).not.toBe('walk');
+  });
+
   it('step out of auto-steer\'s way long before it reaches them, and never sit at the turns', () => {
     for (const rig of ['cultivate', 'combine'] as Rig[]) {
       const rand = seeded(6), a = createAnimals('winter', rand);

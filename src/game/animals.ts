@@ -278,7 +278,8 @@ function updateFlock(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
       const q = stepAside(s.v, e, e.state === 'route' ? ROUTE_ROOM : area);
       e.graze = 0;
       if (e.state === 'route') { walk(e, q.x, q.y, ASIDE, dt, 6); continue; }
-      e.state = 'walk'; e.timer = 0; e.tx = q.x; e.ty = q.y; e.speed = ASIDE;
+      const t = area === PEN ? keepIn(PEN, q, 8) : q;
+      e.state = 'walk'; e.timer = 0; e.tx = t.x; e.ty = t.y; e.speed = ASIDE;
     }
     if (e.state === 'route') {
       e.graze += (0 - e.graze) * Math.min(1, dt / 250);
