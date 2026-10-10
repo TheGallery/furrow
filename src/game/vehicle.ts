@@ -1,4 +1,4 @@
-import { BARN, DOOR_BOTTOM, DOOR_TOP, DOOR_X, WORLD_H, WORLD_W } from './constants';
+import { BARN, DOOR_BOTTOM, DOOR_TOP, DOOR_X, FIELD, WORLD_W } from './constants';
 
 export interface Vehicle {
   x: number;
@@ -29,7 +29,8 @@ const TURN_RATE = 1.15;
 // Share of full steering kept at a standstill, so Left/Right always answer.
 const STANDING_GRIP = 0.4;
 
-export const BOUNDS = { x0: 30, x1: WORLD_W - 30, y0: 96, y1: WORLD_H - 24 };
+// The bottom edge stops just under the field, so the lane below it stays the neighbours'.
+export const BOUNDS = { x0: 30, x1: WORLD_W - 30, y0: 96, y1: FIELD.y + FIELD.h + 10 };
 
 /** Speed and heading after dt seconds of input. Steering is slower at a standstill but never dead. */
 export function drive(v: Vehicle, c: Controls, dt: number): Vehicle {

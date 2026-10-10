@@ -16,7 +16,7 @@ function tyre(ctx: Ctx, cx: number, cy: number, len: number, wid: number, r: num
   ctx.restore();
 }
 
-function tractor(ctx: Ctx, t: number, wh: Wheels, colour: string = P.red) {
+export function tractor(ctx: Ctx, t: number, wh: Wheels, colour: string = P.red) {
   shadow(ctx, -26, -22, 70, 44);
   tyre(ctx, -7, -21, 26, 10, 3, wh.roll); tyre(ctx, -7, 21, 26, 10, 3, wh.roll);               // rear tyres
   tyre(ctx, 34, -16.5, 16, 7, 2, wh.roll, wh.steer); tyre(ctx, 34, 16.5, 16, 7, 2, wh.roll, wh.steer); // front tyres, steering
@@ -103,7 +103,7 @@ function rootHarvester(ctx: Ctx, t: number, w: number, roll: number) {
   ctx.fillStyle = P.yellow; rr(ctx, -36, w / 2 - 14, 14, 12, 3); ctx.fill();                   // offset lifter share
 }
 
-function trailer(ctx: Ctx, load: number, roll: number) {
+export function trailer(ctx: Ctx, load: number, roll: number) {
   ctx.fillStyle = P.steelDark; ctx.fillRect(-40, -3, 16, 6);
   shadow(ctx, -96, -22, 58, 44);
   tyre(ctx, -65, -22.5, 18, 7, 2, roll); tyre(ctx, -65, 22.5, 18, 7, 2, roll);

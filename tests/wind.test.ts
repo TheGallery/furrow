@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BARN, WORLD_H, WORLD_W } from '../src/game/constants';
+import { BARN, LANE, WORLD_H, WORLD_W } from '../src/game/constants';
 import { MAX_BITS, type Wind, bitAlpha, bitKind, createWind, gustAt, stepWind } from '../src/game/wind';
 import type { Season } from '../src/game/types';
 
@@ -79,7 +79,7 @@ describe('petals, seed fluff and leaves', () => {
     expect(w.bits).toHaveLength(0);
   });
 
-  it('stay few, off the barn roof, and fade out before they go', () => {
+  it('stay few, off the barn roof and the lane, and fade out before they go', () => {
     const w = createWind(seeded(7));
     const rand = seeded(7);
     let most = 0;
@@ -88,6 +88,7 @@ describe('petals, seed fluff and leaves', () => {
       most = Math.max(most, w.bits.length);
       expect(w.bits.length).toBeLessThanOrEqual(MAX_BITS);
       for (const b of w.bits) if (b.age < 20) expect(b.x < BARN.x + BARN.w && b.y > BARN.y && b.y < BARN.y + BARN.h).toBe(false);
+      for (const b of w.bits) if (b.age < 20) expect(b.y).toBeLessThan(LANE.y);
     }
     expect(most).toBeGreaterThan(5);
     const b = { x: 0, y: 0, vx: 0, vy: 0, spin: 0, turn: 0, kind: 'leaf' as const, age: 0, life: 8000, seed: 0, tint: 0 };

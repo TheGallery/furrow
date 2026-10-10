@@ -3,6 +3,7 @@ import { drawAnimals } from './draw/animals';
 import { barnFloor, barnRoof } from './draw/barn';
 import { drawFlyingBirds, drawGroundBirds } from './draw/birds';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
+import { drawLane } from './draw/lane';
 import { drawRig } from './draw/machines';
 import { drawBlown, drawCloudShadows } from './draw/wind';
 import { drawWildlife } from './draw/wildlife';
@@ -16,6 +17,7 @@ import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonClock } from './game/almanac';
 import { chirpPan, createBirds, updateBirds } from './game/birds';
 import { createAnimals, updateAnimals } from './game/animals';
+import { createLane, stepLane } from './game/lane';
 import { seasonAt, seasonBlend } from './game/season';
 import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
@@ -79,6 +81,7 @@ const g = {
   wind: createWind(),
   birds: createBirds(),
   wild: createWildlife(),
+  lane: createLane(),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -299,6 +302,7 @@ function update(dt: number): { label: string; working: boolean } {
   stepWind(g.wind, dt, info.season);
   // a hare or the fox at the edges now and then; they keep out of the machine's way, never the other way round
   stepWildlife(g.wild, { season: info.season, v: g.v, rig: g.rig }, dt);
+  stepLane(g.lane, dt, info.season, g.v, g.rig);
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
@@ -409,6 +413,7 @@ function render(working: boolean): void {
     drawRoute(ctx, routeAhead(g.v, g.pilot, off), { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, g.lanesAlpha);
   }
 
+  drawLane(ctx, g.lane, season(), t);
   drawGroundBirds(ctx, g.birds);
   drawAnimals(ctx, animals, blend, season());
 

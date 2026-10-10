@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CELL, COLS, DOOR_X, FIELD, LANES, ROWS, WORK_HALF } from '../src/game/constants';
+import { CELL, COLS, DOOR_X, FIELD, LANE, LANES, ROWS, WORK_HALF } from '../src/game/constants';
 import { PACES, autoSteer, laneEnd, laneHold, laneY, nearestLane, paceStep, pilotFrom, routeAhead, subSteps, turnLegs } from '../src/game/driving';
 import { RAW, createField, workStrip } from '../src/game/field';
 import { workOffset } from '../src/game/machines';
@@ -120,6 +120,15 @@ describe('auto-steer', () => {
       // it ends a lane further on, facing back the way it came
       const end = legs[legs.length - 1].pts;
       expect(end[end.length - 1]).toBeCloseTo(laneY(3 + stepDir), 0);
+    }
+  });
+
+  it('turns at the bottom of the field well clear of the neighbours\' lane', () => {
+    for (const rig of ['cultivate', 'combine', 'roots'] as const) for (const dir of [1, -1]) for (const [lane, stepDir] of [[LANES - 2, 1], [LANES - 1, -1]]) {
+      for (const L of turnLegs(lane, dir, stepDir, workOffset(rig))) for (let i = 0; i < L.n; i++) {
+        expect(L.pts[2 * i + 1]).toBeLessThan(BOUNDS.y1);
+        expect(L.pts[2 * i + 1] + 33).toBeLessThan(LANE.y);   // the tractor's half width
+      }
     }
   });
 
