@@ -1,4 +1,4 @@
-import { BARN, DOOR_X, DOOR_Y, FIELD, SCALE, WORLD_H, WORLD_W } from './constants';
+import { BARN, DOOR_X, DOOR_Y, FIELD, LANE, SCALE, WORLD_H, WORLD_W } from './constants';
 import { EXT } from './machines';
 import type { Rig, Season } from './types';
 import type { Vehicle } from './vehicle';
@@ -75,6 +75,8 @@ const BOX_MS: [number, number] = [4500, 7000];
 /** Prints fade over this long, and no more than this many lie in the snow at once. */
 export const PRINT_MS = 90_000, MAX_PRINTS = 360;
 const HARE_BOUND = 22, FOX_STEP = 8;
+/** How far a sitting hare reaches from its middle (src/draw/wildlife); a spot also leaves room for the step it settles within. */
+export const HARE_HALF = 9;
 
 /**
  * Where an auto-steer headland turn can run: a band beyond each end of the field, as deep as the
@@ -87,16 +89,17 @@ export const TURN_BANDS = [
 export const inTurnBand = (x: number, y: number): boolean => TURN_BANDS.some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
 
 /**
- * Where a hare sits out: on the top verge between the hedge and the field, on the grass under the
- * field, or just inside either long edge of the field, in the young crop or the stubble. All stop
- * short of the turn bands, and the grass under the field stops short of the dashboard at the bottom
- * right, so a hare never sits behind it. `home` is the way it goes back into cover.
+ * Where a hare sits out: on the top verge between the hedge and the field, on the strip of grass
+ * between the field and the neighbours' lane (never on the lane, where passers-by go), or just inside
+ * either long edge of the field, in the young crop or the stubble. All stop short of the turn bands,
+ * and the strip under the field stops short of the dashboard at the bottom right, so a hare never sits
+ * behind it. `home` is the way it goes back into cover.
  */
 export const SPOTS = [
   { x0: FIELD.x + 40, x1: FIELD.x + FIELD.w - 40, y0: 102, y1: 134, home: 'top' },
   { x0: FIELD.x + 60, x1: FIELD.x + FIELD.w - 60, y0: FIELD.y + 14, y1: FIELD.y + 50, home: 'top' },
   { x0: FIELD.x + 60, x1: FIELD.x + FIELD.w - 60, y0: FIELD.y + FIELD.h - 50, y1: FIELD.y + FIELD.h - 14, home: 'bottom' },
-  { x0: FIELD.x + 40, x1: 1240, y0: FIELD.y + FIELD.h + 16, y1: FIELD.y + FIELD.h + 70, home: 'bottom' },
+  { x0: FIELD.x + 40, x1: 1240, y0: FIELD.y + FIELD.h + 5, y1: LANE.y - HARE_HALF - 2, home: 'bottom' },
 ] as const;
 type Spot = (typeof SPOTS)[number];
 /** The fox's line along the top verge, and how far it strays either side of it. */

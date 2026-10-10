@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DOOR_X, DOOR_Y, FIELD, WORLD_W } from '../src/game/constants';
+import { DOOR_X, DOOR_Y, FIELD, LANE, WORLD_W } from '../src/game/constants';
 import type { Season } from '../src/game/types';
 import type { Vehicle } from '../src/game/vehicle';
 import {
-  FOX_SHY, FOX_SWAY, FOX_Y, HARE_SHY, MAX_PRINTS, OLD_TRACKS, PRINT_MS, type Print, SPOTS, type WildScene, type Wildlife,
+  FOX_SHY, FOX_SWAY, FOX_Y, HARE_HALF, HARE_SHY, MAX_PRINTS, OLD_TRACKS, PRINT_MS, type Print, SPOTS, type WildScene, type Wildlife,
   createWildlife, inTurnBand, machineDist, onSnowyGrass, printFade, stepWildlife, visiting,
 } from '../src/game/wildlife';
 
@@ -244,5 +244,30 @@ describe('the turn bands', () => {
     expect(inTurnBand(FIELD.x - 60, FIELD.y + 200)).toBe(true);
     expect(inTurnBand(FIELD.x + FIELD.w + 60, FIELD.y + 200)).toBe(true);
     for (const g of SPOTS) for (const x of [g.x0, g.x1]) for (const y of [g.y0, g.y1]) expect(inTurnBand(x, y)).toBe(false);
+  });
+});
+
+describe('the neighbours\' lane', () => {
+  it('has no hare sitting on it, so passers-by never drive over one', () => {
+    for (const g of SPOTS) {
+      expect(g.y0).toBeLessThanOrEqual(g.y1);
+      const clear = g.y1 + HARE_HALF < LANE.y || g.y0 - HARE_HALF > LANE.y + LANE.h;
+      expect(clear).toBe(true);
+    }
+  });
+
+  it('only ever has a hare on it in passing, never sat down there', () => {
+    // the machine up at the top of the field, so the hares come out down by the lane
+    const rand = seeded(9), w = createWildlife(rand), sc = scene('summer', { x: FIELD.x + FIELD.w / 2, y: FIELD.y + 40, a: 0, speed: 0 });
+    let byTheLane = 0;
+    for (let t = 0; t < 30 * 60 * 1000; t += 50) {
+      stepWildlife(w, sc, 50, rand);
+      for (const h of w.hares) if (h.state === 'sit' || h.state === 'box') {
+        expect(h.y + HARE_HALF).toBeLessThan(LANE.y);
+        if (h.y > FIELD.y + FIELD.h) byTheLane++;
+      }
+    }
+    // the strip of grass beside the lane is still one of its spots
+    expect(byTheLane).toBeGreaterThan(0);
   });
 });
