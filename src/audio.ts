@@ -15,6 +15,8 @@ export class Ambience {
   private gust = 0;
   private swelling = false;
   muted: boolean;
+  /** Where the next chirp comes from (-1 left to 1 right), so it sounds where a bird is; null for anywhere. */
+  chirpPan: (() => number | null) | null = null;
 
   constructor(muted: boolean) { this.muted = muted; }
 
@@ -74,7 +76,7 @@ export class Ambience {
 
   private chirp(at: number): void {
     const ac = this.ac!, pan = ac.createStereoPanner(), notes = 2 + Math.floor(Math.random() * 3), base = 2400 + Math.random() * 1400;
-    pan.pan.value = Math.random() * 1.6 - 0.8; pan.connect(this.master);
+    pan.pan.value = this.chirpPan?.() ?? Math.random() * 1.6 - 0.8; pan.connect(this.master);
     for (let i = 0; i < notes; i++) {
       const t = at + i * (0.12 + Math.random() * 0.06), o = ac.createOscillator(), g = ac.createGain();
       o.type = 'sine';

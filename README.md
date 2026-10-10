@@ -69,7 +69,8 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 
 - **Seasons.** Spring, summer, autumn and winter each last about five minutes. The grass and hedges fade between them, and winter brings snow. The season pill in the top-left corner fills a soft ring through the season, says what you are doing and when the next season comes, e.g. "winter in about 3 min", and counts this year's harvest.
 - **Weather.** Soft cloud shadows drift over the whole farm. Every few seconds a gust crosses it and blows petals off the hedges in spring, seed fluff in summer and leaves in autumn; winter's bare hedges let nothing go.
-- **Sound.** Soft wind that swells as a gust passes, the odd bird, and a quiet engine hum while you drive, all generated in the browser.
+- **Birds.** Gulls follow the work and settle on the freshly worked strip (rooks in autumn), lifting as you come back past. Swallows loop over the summer crop, and sparrows hop along the hedge tops, with a robin in winter.
+- **Sound.** Soft wind that swells as a gust passes, the odd bird (heard from where the birds are), and a quiet engine hum while you drive, all generated in the browser.
 - **Saving.** Progress is kept in your browser's local storage and restored when you come back.
 
 ![A machine at work](docs/screenshots/working.png)
