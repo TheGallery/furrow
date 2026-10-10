@@ -1,5 +1,6 @@
 import { Ambience } from './audio';
 import { barnFloor, barnRoof } from './draw/barn';
+import { drawFlyingBirds, drawGroundBirds } from './draw/birds';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
 import { drawBlown, drawCloudShadows } from './draw/wind';
@@ -11,6 +12,7 @@ import { CROPS, createField, grow, summarize, workStrip } from './game/field';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonClock } from './game/almanac';
+import { chirpPan, createBirds, updateBirds } from './game/birds';
 import { seasonAt, seasonBlend } from './game/season';
 import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
@@ -71,6 +73,7 @@ const g = {
   cardAcc: 1000,   // so the field card and season pill paint on the first frame
   clock: 0,
   wind: createWind(),
+  birds: createBirds(),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -104,6 +107,7 @@ resize();
 
 // ---------------- sound ----------------
 const audio = new Ambience(store.get(MUTE_KEY) === '1');
+audio.chirpPan = () => chirpPan(g.birds, season());
 const muteBtn = document.getElementById('mute') as HTMLButtonElement;
 const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>';
 const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M17 10l4 4M21 10l-4 4"/></svg>';
@@ -366,6 +370,9 @@ function update(dt: number): { label: string; working: boolean } {
     seasonPill.render(season(), label, Math.floor(g.harvestCells / 60), seasonClock(g.elapsed));
   }
 
+  const off = workOffset(g.rig);
+  updateBirds(g.birds, { season: info.season, working, tines: { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, v: g.v, rig: g.rig }, dt);
+
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
   audio.update(s, engine, info.season, gustAt(g.wind, g.v.x));
   return { label, working };
@@ -392,6 +399,8 @@ function render(working: boolean): void {
     drawRoute(ctx, routeAhead(g.v, g.pilot, off), { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, g.lanesAlpha);
   }
 
+  drawGroundBirds(ctx, g.birds);
+
   // inside the barn: floor, turntable and the parked machines on the carousel
   barnFloor(ctx, g.spin * Math.PI);
   const n = g.items.length, spread = SLOT + 34 * Math.sin(Math.PI * g.spin);
@@ -416,6 +425,7 @@ function render(working: boolean): void {
   const winter = (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0);
   drawCloudShadows(ctx, g.wind, winter);
   drawBlown(ctx, g.wind);
+  drawFlyingBirds(ctx, g.birds, (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0));
   ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
   drawSnow(ctx, t, winter);
   cluster.updateSpeed(g.v.speed);
