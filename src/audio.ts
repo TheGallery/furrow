@@ -13,6 +13,7 @@ export class Ambience {
   private engineOsc: OscillatorNode[] = [];
   private birdIn = 3;
   private gust = 0;
+  private swelling = false;
   muted: boolean;
 
   constructor(muted: boolean) { this.muted = muted; }
@@ -47,15 +48,18 @@ export class Ambience {
     if (this.ac) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ac.currentTime, 0.3);
   }
 
-  /** `engine` is 0..1 (the machine's speed share); `dt` in seconds. */
-  update(dt: number, engine: number, season: Season): void {
+  /** `engine` is 0..1 (the machine's speed share); `gust` 0..1 is the wind the farm can see; `dt` in seconds. */
+  update(dt: number, engine: number, season: Season, gust = 0): void {
     const ac = this.ac;
     if (!ac || ac.state !== 'running') return;
     const now = ac.currentTime;
     this.engine.gain.setTargetAtTime(engine > 0.01 ? 0.01 + engine * 0.028 : 0, now, 0.4);
     this.engineOsc.forEach((o, i) => o.frequency.setTargetAtTime((i ? 97 : 48) * (1 + engine * 0.25), now, 0.5));
     this.gust -= dt;
-    if (this.gust <= 0) {
+    // a gust you can see crossing the farm swells the wind a little as it passes
+    if (gust > 0.3 && !this.swelling) { this.swelling = true; this.wind.gain.setTargetAtTime(season === 'winter' ? 0.1 : 0.07, now, 1.2); }
+    else if (gust < 0.15 && this.swelling) { this.swelling = false; this.gust = 0; }
+    if (this.gust <= 0 && !this.swelling) {
       this.gust = 2 + Math.random() * 3;
       this.wind.gain.setTargetAtTime((season === 'winter' ? 0.07 : 0.04) + Math.random() * 0.03, now, 1.5);
       this.windFilter.frequency.setTargetAtTime(320 + Math.random() * 260, now, 1.5);

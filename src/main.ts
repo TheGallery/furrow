@@ -2,6 +2,7 @@ import { Ambience } from './audio';
 import { barnFloor, barnRoof } from './draw/barn';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
+import { drawBlown, drawCloudShadows } from './draw/wind';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
 import { BARN, DOOR_X, DOOR_Y, FIELD, H, RIG_W, SCALE, W, WORK_HALF, ZOOM } from './game/constants';
@@ -16,6 +17,7 @@ import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
+import { createWind, gustAt, stepWind } from './game/wind';
 import { BarnMenu } from './ui/barnMenu';
 import { DashboardCluster, TOGGLES, type Toggle } from './ui/drivingCard';
 import { FieldCard } from './ui/fieldCard';
@@ -68,6 +70,7 @@ const g = {
   menuAcc: 0,
   cardAcc: 1000,   // so the field card and season pill paint on the first frame
   clock: 0,
+  wind: createWind(),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -282,6 +285,7 @@ function update(dt: number): { label: string; working: boolean } {
   const info = seasonAt(g.elapsed);
   if (info.year !== g.year) { g.year = info.year; g.harvestCells = 0; }
   g.growAcc += dt;
+  stepWind(g.wind, dt, info.season);
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
@@ -363,7 +367,7 @@ function update(dt: number): { label: string; working: boolean } {
   }
 
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
-  audio.update(s, engine, info.season);
+  audio.update(s, engine, info.season, gustAt(g.wind, g.v.x));
   return { label, working };
 }
 
@@ -408,8 +412,12 @@ function render(working: boolean): void {
   } else if (g.mode !== 'menu') drawMachine(ctx, g.rig, g.v, t, working, g.wheels);
 
   barnRoof(ctx, g.roof, g.door, t);
+  // the weather overhead: cloud shadows fall over everything, and the wind carries what the hedges let go
+  const winter = (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0);
+  drawCloudShadows(ctx, g.wind, winter);
+  drawBlown(ctx, g.wind);
   ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
-  drawSnow(ctx, t, (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0));
+  drawSnow(ctx, t, winter);
   cluster.updateSpeed(g.v.speed);
 }
 
