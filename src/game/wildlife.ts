@@ -40,6 +40,8 @@ export interface Fox {
   shy: boolean;
   head: number;
   dist: number;
+  /** Which side of its line the next print goes, flipped at every step. */
+  foot: number;
 }
 
 /** A footprint in the snow; `side` puts a fox's prints left and right of its line. */
@@ -110,9 +112,13 @@ export function machineDist(v: Vehicle, rig: Rig, x: number, y: number): number 
   return Math.hypot(x - ax - dx * k, y - ay - dy * k) - 30;
 }
 
-/** Snow lies on the grass but never on the field's soil; nor in the barn or on its gravel apron. */
+/** The hedges as renderBackground lays them: the top row, and the columns down the left and right sides. */
+const HEDGE_TOP = 92, HEDGE_LEFT = 120, HEDGE_RIGHT = WORLD_W - 70, HEDGE_SIDE_Y0 = 140;
+
+/** Snow lies on the grass but never on the field's soil or in the hedges; nor in the barn or on its gravel apron. */
 export function onSnowyGrass(x: number, y: number): boolean {
-  if (x < 0 || x > WORLD_W || y < 0 || y > WORLD_H) return false;
+  if (x < 0 || x > WORLD_W || y < HEDGE_TOP || y > WORLD_H) return false;
+  if (y > HEDGE_SIDE_Y0 && (x < HEDGE_LEFT || x > HEDGE_RIGHT)) return false;
   if (x > FIELD.x - 4 && x < FIELD.x + FIELD.w + 4 && y > FIELD.y - 4 && y < FIELD.y + FIELD.h + 4) return false;
   if (x > BARN.x - 4 && x < BARN.x + BARN.w + 4 && y > BARN.y - 4 && y < BARN.y + BARN.h + 4) return false;
   return !(x > DOOR_X - 8 && x < DOOR_X + 76 && y > DOOR_Y - 74 && y < DOOR_Y + 74);
@@ -156,7 +162,7 @@ function spawnHares(w: Wildlife, sc: WildScene, rand: Rand): void {
 function spawnFox(w: Wildlife, sc: WildScene, rand: Rand): void {
   // in from the side away from the machine
   const dir = sc.v.x > WORLD_W / 2 ? 1 : -1;
-  w.fox = { x: dir > 0 ? -40 : WORLD_W + 40, y: FOX_Y + between(rand, [-FOX_SWAY, FOX_SWAY]), a: dir > 0 ? 0 : Math.PI, dir, stopX: between(rand, [FIELD.x + 120, FIELD.x + FIELD.w - 120]), stopped: false, pause: 0, shy: false, head: 0, dist: 0 };
+  w.fox = { x: dir > 0 ? -40 : WORLD_W + 40, y: FOX_Y + between(rand, [-FOX_SWAY, FOX_SWAY]), a: dir > 0 ? 0 : Math.PI, dir, stopX: between(rand, [FIELD.x + 120, FIELD.x + FIELD.w - 120]), stopped: false, pause: 0, shy: false, head: 0, dist: 0, foot: 1 };
 }
 
 function lay(w: Wildlife, p: Omit<Print, 'age'>): void {
@@ -226,7 +232,7 @@ function stepFox(w: Wildlife, f: Fox, sc: WildScene, dt: number, snow: boolean, 
     f.y = Math.min(FOX_Y + FOX_SWAY, Math.max(FOX_Y - FOX_SWAY, f.y + Math.sin(f.a) * sp + Math.sin(w.t / 900) * 0.04));
   }
   if (snow && (f.dist += Math.hypot(f.x - x0, f.y - y0)) > FOX_STEP) {
-    f.dist = 0; lay(w, { x: f.x, y: f.y, a: f.a, kind: 'fox', side: w.prints.length % 2 ? 1 : -1 });
+    f.dist = 0; f.foot = -f.foot; lay(w, { x: f.x, y: f.y, a: f.a, kind: 'fox', side: f.foot });
   }
   if (f.x < -60 || f.x > WORLD_W + 60) { w.fox = null; w.wait = quiet(sc.season, rand); }
 }
@@ -264,8 +270,8 @@ export const OLD_TRACKS: readonly Omit<Print, 'age'>[] = (() => {
       }
     }
   };
-  trail('hare', [[470, 74], [620, 118], [790, 104], [960, 128], [1120, 96]], HARE_BOUND);
-  trail('fox', [[1696, 150], [1620, 260], [1640, 420], [1606, 600], [1650, 760], [1600, 930]], FOX_STEP);
+  trail('hare', [[470, 98], [620, 118], [790, 104], [960, 128], [1120, 96]], HARE_BOUND);
+  trail('fox', [[1626, 100], [1594, 260], [1620, 420], [1590, 600], [1618, 760], [1594, 930]], FOX_STEP);
   trail('hare', [[330, 140], [372, 300], [352, 520], [384, 700], [360, 900]], HARE_BOUND);
   return out;
 })();

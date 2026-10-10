@@ -3,7 +3,7 @@ import { DOOR_X, DOOR_Y, FIELD, WORLD_W } from '../src/game/constants';
 import type { Season } from '../src/game/types';
 import type { Vehicle } from '../src/game/vehicle';
 import {
-  FOX_SHY, FOX_SWAY, FOX_Y, HARE_SHY, MAX_PRINTS, OLD_TRACKS, PRINT_MS, SPOTS, type WildScene, type Wildlife,
+  FOX_SHY, FOX_SWAY, FOX_Y, HARE_SHY, MAX_PRINTS, OLD_TRACKS, PRINT_MS, type Print, SPOTS, type WildScene, type Wildlife,
   createWildlife, inTurnBand, machineDist, onSnowyGrass, printFade, stepWildlife, visiting,
 } from '../src/game/wildlife';
 
@@ -217,6 +217,25 @@ describe('tracks in the snow', () => {
     expect(onSnowyGrass(100, DOOR_Y)).toBe(false);
     expect(onSnowyGrass(FIELD.x + 200, 120)).toBe(true);
     expect(onSnowyGrass(FIELD.x + 200, FIELD.y + FIELD.h + 40)).toBe(true);
+  });
+
+  it('nor in the hedges along the top and down either side', () => {
+    expect(onSnowyGrass(FIELD.x + 200, 60)).toBe(false);
+    expect(onSnowyGrass(60, 200)).toBe(false);
+    expect(onSnowyGrass(WORLD_W - 30, 400)).toBe(false);
+    expect(onSnowyGrass(FIELD.x + FIELD.w + 30, 400)).toBe(true);
+  });
+
+  it('a fox puts its prints left and right of its line in turn', () => {
+    const rand = seeded(9), w = createWildlife(rand);
+    let steps = 0, last: Print | undefined;
+    run(w, 30 * 60 * 1000, scene('winter'), rand, (w) => {
+      const p = w.prints[w.prints.length - 1];
+      if (!p || p === last || p.kind !== 'fox') return;
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) < 20) { expect(p.side).toBe(-last.side); steps++; }
+      last = p;
+    });
+    expect(steps).toBeGreaterThan(10);
   });
 });
 
