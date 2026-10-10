@@ -3,6 +3,7 @@ import { CROPS, CULTIVATED, type Field, RAW, SEEDED, STUBBLE, WATERED } from '..
 import type { Crop, Season } from '../game/types';
 import { drawPen } from './animals';
 import { barnGround } from './barn';
+import { drawLampFixture } from './daylight';
 import { laneGround } from './lane';
 import { type Ctx, P, mix, rnd, rr } from './palette';
 import { drawOldTracks } from './wildlife';
@@ -32,6 +33,7 @@ export function renderBackground(b: Ctx, blend: Blend): void {
   laneGround(b, snow);
   for (let i = 0, x = -10; x < WORLD_W + 30; i++, x += 36 + rnd(i + 20) * 10) blob(x, WORLD_H - 4 + Math.sin(i * 1.7) * 3, 15 + rnd(i + 40) * 4, i, true, 0.65);
   barnGround(b);
+  drawLampFixture(b);
   drawOldTracks(b, snow);
   drawPen(b);
   b.save(); b.shadowColor = 'rgba(70,55,35,0.22)'; b.shadowBlur = 18; b.shadowOffsetY = 4;

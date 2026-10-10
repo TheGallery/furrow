@@ -1,5 +1,6 @@
 import { BARN, FIELD, LANE, SCALE, WORK_HALF, WORLD_H, WORLD_W } from './constants';
 import { EXT } from './machines';
+import { afterDusk } from './daylight';
 import type { Rig, Season } from './types';
 import type { Vehicle } from './vehicle';
 
@@ -52,6 +53,8 @@ export interface BirdScene {
   tines: { x: number; y: number };
   v: Vehicle;
   rig: Rig;
+  /** 0 by day, 1 through the night (daylight.ts): after dusk the gulls stay away and the hedge birds sit tight. */
+  night?: number;
 }
 
 /** How many gulls or rooks come to the work in each season; swallows have the summer. */
@@ -146,7 +149,8 @@ export function updateBirds(b: Birds, s: BirdScene, dt: number, rand: Rand = Mat
 
   // --- gulls and rooks: come while there is fresh work, drift off a while after it stops
   b.idle = s.working ? 0 : b.idle + dt;
-  const want = b.idle < STAY_MS && b.trail.length ? FLOCK[s.season] : 0;
+  const night = afterDusk(s.night ?? 0);
+  const want = b.idle < STAY_MS && b.trail.length && !night ? FLOCK[s.season] : 0;
   const kind = s.season === 'autumn' ? 'rook' : 'gull';
   const staying = b.flock.filter((f) => f.state !== 'leave');
   b.spawn -= dt;
@@ -196,7 +200,7 @@ export function updateBirds(b: Birds, s: BirdScene, dt: number, rand: Rand = Mat
     p.kind = s.season === 'winter' && i === 0 ? 'robin' : 'sparrow';
     if (!p.flying) {
       p.timer -= dt;
-      if (near(p.x, p.y) < HEDGE_SHY || p.timer < 0) {
+      if (near(p.x, p.y) < HEDGE_SHY || (p.timer < 0 && !night)) {
         const options = PERCHES.filter((q) => { const d = Math.hypot(q.x - p.x, q.y - p.y); return d > 90 && d < 320 && near(q.x, q.y) > 200; });
         const q = options[Math.floor(rand() * options.length)];
         if (q) { p.flying = true; fly(p, q.x + between(rand, -5, 5), q.y + between(rand, -3, 3)); }

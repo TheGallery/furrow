@@ -50,8 +50,11 @@ export class Ambience {
     if (this.ac) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ac.currentTime, 0.3);
   }
 
-  /** `engine` is 0..1 (the machine's speed share); `gust` 0..1 is the wind the farm can see; `dt` in seconds. */
-  update(dt: number, engine: number, season: Season, gust = 0): void {
+  /**
+   * `engine` is 0..1 (the machine's speed share); `gust` 0..1 is the wind the farm can see; `dt` in seconds.
+   * `quiet` is true after dusk, when the birds have gone to roost and no longer chirp.
+   */
+  update(dt: number, engine: number, season: Season, gust = 0, quiet = false): void {
     const ac = this.ac;
     if (!ac || ac.state !== 'running') return;
     const now = ac.currentTime;
@@ -66,7 +69,7 @@ export class Ambience {
       this.wind.gain.setTargetAtTime((season === 'winter' ? 0.07 : 0.04) + Math.random() * 0.03, now, 1.5);
       this.windFilter.frequency.setTargetAtTime(320 + Math.random() * 260, now, 1.5);
     }
-    if (season === 'winter') return;
+    if (season === 'winter' || quiet) return;
     this.birdIn -= dt;
     if (this.birdIn <= 0) {
       this.birdIn = (season === 'spring' ? 3 : 6) + Math.random() * 7;

@@ -6,6 +6,7 @@ import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackgro
 import { drawLane } from './draw/lane';
 import { drawRig } from './draw/machines';
 import { drawBlown, drawCloudShadows } from './draw/wind';
+import { drawDaylight } from './draw/daylight';
 import { drawWildlife } from './draw/wildlife';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
@@ -25,6 +26,7 @@ import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
 import { createWildlife, stepWildlife } from './game/wildlife';
+import { afterDusk, hourOf, lightAt } from './game/daylight';
 import { createWind, gustAt, stepWind } from './game/wind';
 import { BarnMenu } from './ui/barnMenu';
 import { DashboardCluster, TOGGLES, type Toggle } from './ui/drivingCard';
@@ -82,6 +84,8 @@ const g = {
   birds: createBirds(),
   wild: createWildlife(),
   lane: createLane(),
+  // the light follows the player's own clock, read once a second
+  light: lightAt(hourOf(new Date())),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -301,7 +305,7 @@ function update(dt: number): { label: string; working: boolean } {
   g.growAcc += dt;
   stepWind(g.wind, dt, info.season);
   // a hare or the fox at the edges now and then; they keep out of the machine's way, never the other way round
-  stepWildlife(g.wild, { season: info.season, v: g.v, rig: g.rig }, dt);
+  stepWildlife(g.wild, { season: info.season, v: g.v, rig: g.rig, night: g.light.dark }, dt);
   stepLane(g.lane, dt, info.season, g.v, g.rig);
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
   let label = 'In the barn', working = false, steer = 0;
@@ -379,16 +383,17 @@ function update(dt: number): { label: string; working: boolean } {
   g.cardAcc += dt;
   if (g.cardAcc >= 1000) {
     g.cardAcc = 0;
+    g.light = lightAt(hourOf(new Date()));
     fieldCard.render(g.field, g.elapsed);
     seasonPill.render(season(), label, Math.floor(g.harvestCells / 60), seasonClock(g.elapsed));
   }
 
   const off = workOffset(g.rig);
-  updateBirds(g.birds, { season: info.season, working, tines: { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, v: g.v, rig: g.rig }, dt);
-  updateAnimals(animals, { season: info.season, v: g.v, rig: g.rig, driving: g.mode === 'drive' }, dt);
+  updateBirds(g.birds, { season: info.season, working, tines: { x: g.v.x + Math.cos(g.v.a) * off, y: g.v.y + Math.sin(g.v.a) * off }, v: g.v, rig: g.rig, night: g.light.dark }, dt);
+  updateAnimals(animals, { season: info.season, v: g.v, rig: g.rig, driving: g.mode === 'drive', night: g.light.dark }, dt);
 
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
-  audio.update(s, engine, info.season, gustAt(g.wind, g.v.x));
+  audio.update(s, engine, info.season, gustAt(g.wind, g.v.x), afterDusk(g.light.dark));
   return { label, working };
 }
 
@@ -443,9 +448,14 @@ function render(working: boolean): void {
   // the weather overhead: cloud shadows fall over everything, and the wind carries what the hedges let go
   drawCloudShadows(ctx, g.wind, winter);
   drawBlown(ctx, g.wind);
-  drawFlyingBirds(ctx, g.birds, (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0));
+  // the swallows go to roost as the light goes
+  const summer = (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0);
+  drawFlyingBirds(ctx, g.birds, summer * (1 - g.light.dark));
   ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
   drawSnow(ctx, t, winter);
+  // the hour's light over it all, with the lamps lit after dusk; the HUD above the canvas keeps its own colours
+  const out = g.mode === 'drive' || g.mode === 'leaving';
+  drawDaylight(ctx, g.light, { machine: out ? { x: g.v.x, y: g.v.y, a: g.v.a, front: EXT[g.rig][1] * SCALE } : null, summer, t });
   cluster.updateSpeed(g.v.speed);
 }
 

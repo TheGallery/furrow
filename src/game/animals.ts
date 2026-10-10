@@ -1,4 +1,5 @@
 import { FIELD, SCALE } from './constants';
+import { afterDusk } from './daylight';
 import { EXT } from './machines';
 import type { Rig, Season } from './types';
 import { type Vehicle, insideBarn } from './vehicle';
@@ -32,6 +33,8 @@ export const TROUGH: Box = { x: PEN.x + 8, y: PEN.y + PEN.h - 20, w: 24, h: 11 }
 export const WINTER_FIELD: Box = { x: 980, y: 300, w: 440, h: 400 };
 /** The hens' corner above the barn, among the bales, below the season pill. */
 export const YARD: Box = { x: 110, y: 160, w: 80, h: 102 };
+/** Where each hen roosts for the night: in a row at the foot of the bales. */
+export const roostSpot = (i: number): Pt => ({ x: 128 + i * 12, y: 250 });
 /** The top verge the dog walks: above the hedge-side lane, between the two turn bands. */
 export const VERGE = { y: 118, x0: TURN_BANDS[0].x1 + 16, x1: TURN_BANDS[1].x0 - 16 } as const;
 /** Where a dog on the verge may step aside to: up to the hedge or out onto the edge of the field, never into a turn band. */
@@ -132,6 +135,8 @@ export interface Animals {
   hens: Hen[];
   chicks: Chick[];
   dog: Dog;
+  /** Set after dusk: the hens are roosting by the bales, fluffed up. */
+  roost: boolean;
 }
 
 export interface AnimalScene {
@@ -140,6 +145,8 @@ export interface AnimalScene {
   rig: Rig;
   /** True while the player has the machine (not parking, in the barn or rolling out). */
   driving: boolean;
+  /** 0 by day, 1 through the night (daylight.ts); after dusk they settle for the night. */
+  night?: number;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -247,7 +254,7 @@ export function createAnimals(season: Season, rand: Rand = Math.random): Animals
   }
   const chicks: Chick[] = [];
   for (let i = 0; i < CHICKS; i++) chicks.push({ x: hens[0].x - 6 * (i + 1), y: hens[0].y, a: 0, peck: 0, seed: i * 1.7 });
-  return { t: 0, sheep, flock: winter ? 'field' : 'pen', hens, chicks, dog: { ...HOME, a: -0.5, pose: winter ? 'curl' : 'lie', head: 0, wag: 0.3, still: 0, cross: null } };
+  return { t: 0, sheep, flock: winter ? 'field' : 'pen', hens, chicks, dog: { ...HOME, a: -0.5, pose: winter ? 'curl' : 'lie', head: 0, wag: 0.3, still: 0, cross: null }, roost: false };
 }
 
 /** True while hens beyond the first three stay in the warm. */
@@ -261,7 +268,7 @@ export function updateAnimals(a: Animals, s: AnimalScene, dt: number, rand: Rand
 }
 
 function updateFlock(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
-  const winter = s.season === 'winter';
+  const winter = s.season === 'winter', night = afterDusk(s.night ?? 0);
   // out of the gate one by one when winter comes, and home the same way in spring
   if ((winter && a.flock === 'pen') || (!winter && a.flock === 'field')) {
     a.flock = winter ? 'out' : 'home';
@@ -301,7 +308,9 @@ function updateFlock(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
       e.graze += ((look ? 0 : 0.8 + 0.2 * Math.sin(a.t / 700 + e.seed)) - e.graze) * Math.min(1, dt / 300);
       if (e.timer < 0) {
         const r = rand();
-        if (r < 0.5) { const p = inside(area, rand, 14); e.tx = p.x; e.ty = p.y; e.state = 'walk'; e.speed = between(rand, WALK - 1, WALK + 1); }
+        // after dusk the flock lies down for the night, wherever it is
+        if (night) { e.state = 'lie'; e.timer = between(rand, 20000, 40000); }
+        else if (r < 0.5) { const p = inside(area, rand, 14); e.tx = p.x; e.ty = p.y; e.state = 'walk'; e.speed = between(rand, WALK - 1, WALK + 1); }
         else if (r < (s.season === 'summer' ? 0.86 : 0.66)) { e.state = 'lie'; e.timer = between(rand, 12000, 26000); }
         else e.timer = between(rand, 3000, 8000);
       }
@@ -310,7 +319,10 @@ function updateFlock(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
       if (walk(e, e.tx, e.ty, e.speed, dt, 3)) { e.state = 'graze'; e.timer = between(rand, 4000, 11000); }
     } else {
       e.graze = 0;
-      if (e.timer < 0) { e.state = 'graze'; e.timer = between(rand, 3000, 7000); }
+      if (e.timer < 0) {
+        if (night) e.timer = between(rand, 20000, 40000);
+        else { e.state = 'graze'; e.timer = between(rand, 3000, 7000); }
+      }
     }
   }
   if ((a.flock === 'out' || a.flock === 'home') && a.sheep.every((e) => e.lamb || e.state !== 'route')) a.flock = a.flock === 'out' ? 'field' : 'pen';
@@ -343,6 +355,7 @@ function updateFlock(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
 
 function updateHens(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
   const winter = s.season === 'winter';
+  a.roost = afterDusk(s.night ?? 0);
   a.hens.forEach((h, i) => {
     if (henIndoors(s.season, i)) return;
     h.timer -= dt; h.flap = Math.max(0, h.flap - dt / 700);
@@ -353,6 +366,11 @@ function updateHens(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
     if (h.moving) {
       h.peck = 0;
       if (walk(h, h.tx, h.ty, h.speed, dt, 8)) { h.moving = false; h.timer = between(rand, 1500, 5000); }
+    } else if (a.roost) {
+      // after dusk each makes its way to its spot by the bales and sits tight until morning
+      const p = roostSpot(i);
+      h.peck = 0;
+      if (Math.hypot(p.x - h.x, p.y - h.y) > 2) { h.tx = p.x; h.ty = p.y; h.moving = true; h.speed = 8; }
     } else {
       h.peck += ((Math.sin(a.t / 95 + h.seed * 4) > 0.55 ? 1 : 0) - h.peck) * Math.min(1, dt / 60);
       if (h.timer < 0) {
@@ -368,7 +386,7 @@ function updateHens(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
     const lead = i === 0 ? a.hens[0] : a.chicks[i - 1];
     const tx = lead.x - Math.cos(lead.a) * 6, ty = lead.y - Math.sin(lead.a) * 6, far = Math.hypot(tx - c.x, ty - c.y);
     if (far > 1.5) walk(c, tx, ty, Math.min(40, far * 4), dt, 9);
-    c.peck = far < 2 && Math.sin(a.t / 80 + c.seed * 5) > 0.4 ? 1 : 0;
+    c.peck = far < 2 && !a.roost && Math.sin(a.t / 80 + c.seed * 5) > 0.4 ? 1 : 0;
   });
 }
 
@@ -376,8 +394,9 @@ function updateHens(a: Animals, s: AnimalScene, dt: number, rand: Rand): void {
 const atWork = (s: AnimalScene) => s.driving && s.v.x > FIELD.x - 150 && s.v.x < FIELD.x + FIELD.w + 150 && s.v.y > FIELD.y - 60 && s.v.y < FIELD.y + FIELD.h + 60;
 
 function updateDog(a: Animals, s: AnimalScene, dt: number): void {
-  const g = a.dog, v = s.v, winter = s.season === 'winter';
-  const onVerge = g.x > (TURN_BANDS[0].x0 + TURN_BANDS[0].x1) / 2, out = !winter && atWork(s);
+  // in winter and after dusk it keeps to its spot by the bales
+  const g = a.dog, v = s.v, winter = s.season === 'winter', night = afterDusk(s.night ?? 0);
+  const onVerge = g.x > (TURN_BANDS[0].x0 + TURN_BANDS[0].x1) / 2, out = !winter && !night && atWork(s);
   const at = (p: Pt) => Math.hypot(p.x - g.x, p.y - g.y) < 3;
   let goal: Pt | null, speed = TROT;
   if (g.cross) {
@@ -406,7 +425,7 @@ function updateDog(a: Animals, s: AnimalScene, dt: number): void {
     else moving = Math.hypot(goal.x - g.x, goal.y - g.y) > (goal === HOME ? 2 : 6);
   }
   g.still = moving ? 0 : g.still + dt;
-  g.pose = moving ? 'trot' : winter && at(HOME) ? 'curl' : g.still > 900 ? 'lie' : 'stand';
+  g.pose = moving ? 'trot' : (winter || night) && at(HOME) ? 'curl' : g.still > 900 ? 'lie' : 'stand';
   if (!moving && g.pose !== 'curl') {
     // settled: the body along the verge, the head turned toward the machine
     const toM = Math.atan2(v.y - g.y, v.x - g.x), body = onVerge ? (Math.cos(toM) > 0 ? 0 : Math.PI) : -0.5;
