@@ -5,6 +5,7 @@ import { drawFlyingBirds, drawGroundBirds } from './draw/birds';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawLane } from './draw/lane';
 import { drawRig } from './draw/machines';
+import { drawPuddles, drawShower } from './draw/showers';
 import { drawBlown, drawCloudShadows } from './draw/wind';
 import { drawDaylight } from './draw/daylight';
 import { drawWildlife } from './draw/wildlife';
@@ -20,6 +21,7 @@ import { chirpPan, createBirds, updateBirds } from './game/birds';
 import { createAnimals, updateAnimals } from './game/animals';
 import { createLane, stepLane } from './game/lane';
 import { seasonAt, seasonBlend } from './game/season';
+import { createShowers, rainPan, stepShowers, strength } from './game/showers';
 import { SETTINGS_KEY, type Settings, decodeSettings, encodeSettings } from './game/settings';
 import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
@@ -86,6 +88,7 @@ const g = {
   lane: createLane(),
   // the light follows the player's own clock, read once a second
   light: lightAt(hourOf(new Date())),
+  showers: createShowers(),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -308,6 +311,8 @@ function update(dt: number): { label: string; working: boolean } {
   stepWildlife(g.wild, { season: info.season, v: g.v, rig: g.rig, night: g.light.dark }, dt);
   stepLane(g.lane, dt, info.season, g.v, g.rig);
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
+  // now and then a soft shower passes over, and waters what is sown wherever it rains on the field
+  for (const i of stepShowers(g.showers, g.field, dt, info.season)) soil.paint(g.field, i);
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
   const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
@@ -393,7 +398,7 @@ function update(dt: number): { label: string; working: boolean } {
   updateAnimals(animals, { season: info.season, v: g.v, rig: g.rig, driving: g.mode === 'drive', night: g.light.dark }, dt);
 
   const engine = g.mode === 'drive' ? Math.abs(g.v.speed) / MAX_SPEED : g.mode === 'parking' || g.mode === 'leaving' ? 0.3 : 0;
-  audio.update(s, engine, info.season, gustAt(g.wind, g.v.x), afterDusk(g.light.dark));
+  audio.update(s, engine, info.season, gustAt(g.wind, g.v.x), afterDusk(g.light.dark), strength(g.showers.shower), rainPan(g.showers));
   return { label, working };
 }
 
@@ -419,6 +424,7 @@ function render(working: boolean): void {
   }
 
   drawLane(ctx, g.lane, season(), t);
+  drawPuddles(ctx, g.showers, t);
   drawGroundBirds(ctx, g.birds);
   drawAnimals(ctx, animals, blend, season());
 
@@ -451,6 +457,7 @@ function render(working: boolean): void {
   // the swallows go to roost as the light goes
   const summer = (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0);
   drawFlyingBirds(ctx, g.birds, summer * (1 - g.light.dark));
+  drawShower(ctx, g.showers, t);
   ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
   drawSnow(ctx, t, winter);
   // the hour's light over it all, with the lamps lit after dusk; the HUD above the canvas keeps its own colours
