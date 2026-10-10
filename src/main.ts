@@ -5,6 +5,7 @@ import { drawFlyingBirds, drawGroundBirds } from './draw/birds';
 import { SoilLayer, drawField, drawLaneLines, drawRoute, drawSnow, renderBackground } from './draw/field';
 import { drawRig } from './draw/machines';
 import { drawBlown, drawCloudShadows } from './draw/wind';
+import { drawWildlife } from './draw/wildlife';
 import { type Ctx, ease } from './draw/palette';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
 import { BARN, DOOR_X, DOOR_Y, FIELD, H, RIG_W, SCALE, W, WORK_HALF, ZOOM } from './game/constants';
@@ -21,6 +22,7 @@ import type { Crop, Job, Rig } from './game/types';
 import { type Control, controlFor } from './game/input';
 import { MAX_SPEED, type Vehicle, insideBarn, step } from './game/vehicle';
 import { STRAIGHT, type Wheels, rolled, turnWheels } from './game/wheels';
+import { createWildlife, stepWildlife } from './game/wildlife';
 import { createWind, gustAt, stepWind } from './game/wind';
 import { BarnMenu } from './ui/barnMenu';
 import { DashboardCluster, TOGGLES, type Toggle } from './ui/drivingCard';
@@ -76,6 +78,7 @@ const g = {
   clock: 0,
   wind: createWind(),
   birds: createBirds(),
+  wild: createWildlife(),
 };
 
 const saved = decodeSnapshot(store.get(SAVE_KEY));
@@ -294,6 +297,8 @@ function update(dt: number): { label: string; working: boolean } {
   if (info.year !== g.year) { g.year = info.year; g.harvestCells = 0; }
   g.growAcc += dt;
   stepWind(g.wind, dt, info.season);
+  // a hare or the fox at the edges now and then; they keep out of the machine's way, never the other way round
+  stepWildlife(g.wild, { season: info.season, v: g.v, rig: g.rig }, dt);
   if (g.growAcc >= 250) { grow(g.field, g.growAcc, info.season); g.growAcc = 0; }
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
@@ -420,6 +425,9 @@ function render(working: boolean): void {
   });
   ctx.restore();
 
+  const winter = (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0);
+  drawWildlife(ctx, g.wild, winter);
+
   if (g.mode === 'spin') {
     const mid = rigMid(g.rig);
     ctx.save(); ctx.translate(parkX(g.rig) + mid, DOOR_Y); ctx.rotate(Math.PI + g.spin * Math.PI); ctx.translate(-mid, 0); ctx.scale(SCALE, SCALE);
@@ -428,7 +436,6 @@ function render(working: boolean): void {
 
   barnRoof(ctx, g.roof, g.door, t);
   // the weather overhead: cloud shadows fall over everything, and the wind carries what the hedges let go
-  const winter = (blend.from === 'winter' ? 1 - blend.k : 0) + (blend.to === 'winter' ? blend.k : 0);
   drawCloudShadows(ctx, g.wind, winter);
   drawBlown(ctx, g.wind);
   drawFlyingBirds(ctx, g.birds, (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0));
