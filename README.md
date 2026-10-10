@@ -88,7 +88,7 @@ npm run typecheck  # TypeScript
 
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
-- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather, the birds and the animals.
+- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather, the birds, the animals and the wildlife.
 - `src/ui/` holds the barn label, the season pill, the dashboard and the field card.
 - `src/audio.ts` holds the ambient sound.
 
