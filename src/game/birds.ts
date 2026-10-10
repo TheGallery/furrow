@@ -1,4 +1,4 @@
-import { BARN, FIELD, SCALE, WORK_HALF, WORLD_W } from './constants';
+import { BARN, FIELD, SCALE, WORK_HALF, WORLD_H, WORLD_W } from './constants';
 import { EXT } from './machines';
 import type { Rig, Season } from './types';
 import type { Vehicle } from './vehicle';
@@ -55,6 +55,7 @@ export interface BirdScene {
 }
 
 /** How many gulls or rooks come to the work in each season; swallows have the summer. */
+// Summer is 0 on purpose: the captain's board mockup gives the summer work to the swallows.
 export const FLOCK: Record<Season, number> = { spring: 9, summer: 0, autumn: 7, winter: 4 };
 /** How long the flock stays once the work stops, through a headland turn or a pause. */
 export const STAY_MS = 12000;
@@ -77,7 +78,7 @@ export const PERCHES: readonly { x: number; y: number }[] = (() => {
   const rnd = (i: number) => { const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); };
   const out: { x: number; y: number }[] = [];
   for (let i = 0; i < Math.ceil(WORLD_W / 50); i++) out.push({ x: 36 + i * 50, y: 40 + Math.sin(i * 1.7) * 6 });
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < Math.ceil((WORLD_H - 200) / 60); i++) {
     const y = 160 + i * 60;
     if (y < BARN.y - 34 || y > BARN.y + BARN.h + 34) out.push({ x: 40 + rnd(i + 4) * 60, y: y - 6 });
   }
