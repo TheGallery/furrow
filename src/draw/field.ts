@@ -1,12 +1,13 @@
 import { BARN, CELL, COLS, FIELD, H, LANES, LANE_H, ROWS, W, WORLD_H, WORLD_W, ZOOM } from '../game/constants';
 import { CROPS, CULTIVATED, type Field, RAW, SEEDED, STUBBLE, WATERED } from '../game/field';
 import type { Crop, Season } from '../game/types';
+import { drawPen } from './animals';
 import { barnGround } from './barn';
 import { type Ctx, P, mix, rnd, rr } from './palette';
 
 export interface Blend { from: Season; to: Season; k: number }
 
-/** Grass, hedges, the barn's yard and the bare field body, in world units. Redrawn only when the season colours change. */
+/** Grass, hedges, the barn's yard, the sheep pen and the bare field body, in world units. Redrawn only when the season colours change. */
 export function renderBackground(b: Ctx, blend: Blend): void {
   const { from, to, k } = blend;
   const wt = (s: Season) => (from === s ? 1 - k : 0) + (to === s ? k : 0);
@@ -24,6 +25,7 @@ export function renderBackground(b: Ctx, blend: Blend): void {
     blob(WORLD_W - 26 - rnd(i + 4) * 24, y + 20, 18, i, false);
   }
   barnGround(b);
+  drawPen(b);
   b.save(); b.shadowColor = 'rgba(70,55,35,0.22)'; b.shadowBlur = 18; b.shadowOffsetY = 4;
   b.fillStyle = P.soil; rr(b, FIELD.x, FIELD.y, FIELD.w, FIELD.h, FIELD.r); b.fill(); b.restore();
   b.save(); rr(b, FIELD.x, FIELD.y, FIELD.w, FIELD.h, FIELD.r); b.clip();
