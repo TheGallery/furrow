@@ -8,12 +8,15 @@ import { drawRig } from './draw/machines';
 import { drawPuddles, drawShower } from './draw/showers';
 import { drawBlown, drawCloudShadows } from './draw/wind';
 import { drawDaylight } from './draw/daylight';
+import { drawFollowMarks } from './draw/follow';
 import { drawWildlife } from './draw/wildlife';
 import { type Ctx, ease } from './draw/palette';
+import { HOME, arrived, clampCam, glide, glideFrom, pxPerUnit, toView, toWorld, worldTransform } from './game/camera';
 import { type Carousel, ease as easeCarousel, select, settled, shortest, turn } from './game/carousel';
 import { BARN, DOOR_X, DOOR_Y, FIELD, H, RIG_W, SCALE, W, WORK_HALF, ZOOM } from './game/constants';
 import { PACES, PACE_LABELS, type Pilot, autoSteer, laneHold, paceStep, pilotFrom, routeAhead, subSteps } from './game/driving';
 import { CROPS, createField, grow, summarize, workStrip } from './game/field';
+import { type Following, type Target, framing, goneHome, pickAt, startFollowing, stepFollowing, targets } from './game/follow';
 import { EXT, type MachineItem, machinesFor, nextUp, parkX, rigMid, statusLine, workOffset } from './game/machines';
 import { SAVE_KEY, decodeSnapshot, encodeSnapshot } from './game/save';
 import { seasonClock } from './game/almanac';
@@ -33,6 +36,7 @@ import { createWind, gustAt, stepWind } from './game/wind';
 import { BarnMenu } from './ui/barnMenu';
 import { DashboardCluster, TOGGLES, type Toggle } from './ui/drivingCard';
 import { FieldCard } from './ui/fieldCard';
+import { FollowView } from './ui/follow';
 import { SeasonPill } from './ui/seasonPill';
 
 type Mode = 'drive' | 'parking' | 'spin' | 'menu' | 'leaving';
@@ -102,6 +106,24 @@ if (saved) {
 // the sheep, hens and dog round the barn; the flock starts out on the field when the game opens in winter
 const animals = createAnimals(seasonAt(g.elapsed).season);
 
+// What the camera looks at: the whole farm, or something followed. It is never saved, so a reload starts wide.
+const view = {
+  glide: glideFrom(HOME),
+  follow: null as Following | null,
+  /** Everything that can be followed this frame. */
+  ts: [] as Target[],
+  /** What is under the pointer, ringed and named. */
+  hover: null as Target | null,
+  /** The mouse over the farm, in view pixels; null when it is elsewhere, and for touch. */
+  pointer: null as { x: number; y: number } | null,
+  /** ms since something was picked, for its ring. */
+  sincePick: Infinity,
+  /** ms left of the note in the chip saying that steering by hand brought the farm back. */
+  noteMs: 0,
+  /** With reduced motion the view cuts instead of gliding: the frame before the cut, fading out. */
+  fade: null as HTMLCanvasElement | null, fadeMs: 0,
+};
+
 // ---------------- canvas & layers ----------------
 const stage = document.getElementById('stage')!;
 const cv = document.getElementById('field') as HTMLCanvasElement;
@@ -146,7 +168,8 @@ let hinted = !!store.get(HINT_KEY);
 function paintHint(): void {
   const away = !document.hasFocus();
   hint.textContent = away ? 'Click the field, then drive with the arrow keys' : DRIVE_HINT;
-  hint.classList.toggle('gone', hinted && !away);
+  // it steps aside while something is followed: the follow chip has its place
+  hint.classList.toggle('gone', (hinted && !away) || view.follow !== null);
 }
 function hideHint(): void { if (!hinted) { hinted = true; store.set(HINT_KEY, '1'); paintHint(); } }
 window.addEventListener('focus', paintHint);
@@ -209,6 +232,8 @@ function setCrop(c: Crop): void {
 }
 
 function startParking(): void {
+  // the barn's label and carousel are placed for the whole farm, so the view goes home first
+  comeHome();
   g.mode = 'parking'; g.modeT = 0; g.lastJob = g.job;
   g.items = machinesFor(g.crop);
   g.car = { n: g.items.length, sel: itemIndex(g.job), scroll: itemIndex(g.job) };
@@ -218,6 +243,7 @@ function startParking(): void {
 }
 
 function openMenu(): void {
+  view.glide = glideFrom(HOME);
   g.mode = 'menu'; g.modeT = 0; g.pendingPick = false; g.outing = 0;
   g.v = { x: parkX(g.rig), y: DOOR_Y, a: 0, speed: 0 }; g.wheels = STRAIGHT;
   refreshMenu(); menu.open(); fieldCard.tuck(true);
@@ -237,6 +263,100 @@ function pick(): void {
   stage.focus({ preventScroll: true });
 }
 
+// ---------------- following ----------------
+// Click anything that moves and the view glides in and follows it; Esc, a click on empty ground or the
+// chip's × glides back out. Auto-steer keeps working meanwhile (↑ held), and steering by hand brings
+// the whole farm back, unless it is your own machine you are following.
+const REACH = 14;                 // view pixels round a thing that still pick it, so a sparrow can be clicked
+const CUT_MS = 320, NOTE_MS = 1800;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const followView = new FollowView(stage, () => comeHome());
+
+/** Things can be followed while the machine is out on the farm; in the barn the view stays home. */
+const canFollow = () => g.mode === 'drive' || g.mode === 'leaving';
+const machineItem = () => g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
+
+/** With reduced motion, keep the frame on screen to fade out over the next one, instead of gliding. */
+function cut(): void {
+  if (!reduceMotion.matches || !cv.width) return;
+  view.fade ??= document.createElement('canvas');
+  view.fade.width = cv.width; view.fade.height = cv.height;
+  view.fade.getContext('2d')!.drawImage(cv, 0, 0);
+  view.fadeMs = CUT_MS;
+}
+
+function followThing(t: Target): void {
+  cut();
+  view.follow = startFollowing(t); view.sincePick = 0; view.noteMs = 0;
+  followView.announce(`Following ${t.name}, ${t.doing}. Press Escape to come back.`);
+  paintHint();
+}
+
+/** Back to the whole farm; when steering by hand was the reason, the chip says so for a moment. */
+function comeHome(byHand = false): void {
+  if (!view.follow) return;
+  cut();
+  view.follow = null; view.noteMs = byHand ? NOTE_MS : 0;
+  followView.announce(byHand ? 'You took the wheel. Back to the whole farm.' : 'Back to the whole farm.');
+  paintHint();
+}
+
+/** A pointer event on the canvas in view pixels (0..W by 0..H). */
+function viewAt(e: MouseEvent): { x: number; y: number } {
+  const r = cv.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
+}
+
+cv.addEventListener('pointermove', (e) => { view.pointer = e.pointerType === 'touch' ? null : viewAt(e); });
+cv.addEventListener('pointerleave', () => { view.pointer = null; });
+cv.addEventListener('click', (e) => {
+  if (!canFollow()) return;
+  const cam = clampCam(view.glide.cam), p = viewAt(e), w = toWorld(cam, p.x, p.y);
+  const t = pickAt(view.ts, w.x, w.y, REACH / pxPerUnit(cam));
+  if (!t) comeHome();
+  else if (t.ref !== view.follow?.ref) followThing(t);
+});
+
+/** One frame of the camera: find the followed thing again, glide after it, and paint the chip, the name tag and the pointer. */
+function stepView(dt: number, working: boolean): void {
+  const open = canFollow(), blend = seasonBlend(g.elapsed);
+  view.ts = open ? targets({ v: g.v, rig: g.rig, machine: machineItem()?.name ?? 'machine', working, animals, birds: g.birds, wild: g.wild, lane: g.lane, season: season(), blend, dark: g.light.dark }) : [];
+  let t: Target | null = null;
+  if (view.follow) {
+    const seen = view.follow.gone === null;
+    t = stepFollowing(view.follow, view.ts, dt);
+    if (seen && view.follow.gone) followView.announce(`${view.follow.gone.text}.`);
+    // hands on the wheel: ← → ↓ (or ↑ with auto-steer off) bring the whole farm back, unless it is your own machine you watch
+    const byHand = held.has('left') || held.has('right') || held.has('down') || (held.has('up') && !settings.auto);
+    if (view.follow.ref !== 'machine' && g.mode === 'drive' && byHand) comeHome(true);
+    else if (goneHome(view.follow)) comeHome();
+  }
+  const f = view.follow, goal = !f ? HOME : t ? clampCam(framing(f, t)) : view.glide.cam;
+  // about half a second each way; with reduced motion it cuts (see cut()) rather than glides
+  const [pan, zoomTime] = reduceMotion.matches ? [0.05, 0.05] : [0.55, 0.6];
+  glide(view.glide, goal, dt / 1000, pan, zoomTime);
+  // home exactly once it has arrived, so the whole farm is drawn from the cached background again
+  if (!f && view.glide.cam.zoom !== 1 && arrived(view.glide, HOME)) view.glide = glideFrom(HOME);
+
+  const cam = clampCam(view.glide.cam);
+  if (view.pointer && open) { const w = toWorld(cam, view.pointer.x, view.pointer.y); view.hover = pickAt(view.ts, w.x, w.y, REACH / pxPerUnit(cam)); } else view.hover = null;
+  const cursor = view.hover ? 'pointer' : '';
+  if (cv.style.cursor !== cursor) cv.style.cursor = cursor;
+  const h = view.hover;
+  if (h && view.pointer) {
+    const p = toView(cam, h.x, h.y), lift = (h.r + Math.max(h.back, h.front) * Math.abs(Math.sin(h.a))) * pxPerUnit(cam) + 12;
+    followView.showTag(h, Math.max(90, Math.min(W - 90, p.x)), Math.max(30, p.y - lift), W, H);
+  } else followView.hideTag();
+
+  view.sincePick += dt; view.noteMs = Math.max(0, view.noteMs - dt); view.fadeMs = Math.max(0, view.fadeMs - dt);
+  // a card from a key (pace, guides) takes the top middle for a moment
+  if (toastT > 0) followView.hideChip();
+  else if (f?.gone) followView.note(f.gone.text, true);
+  else if (f && t) followView.following(t);
+  else if (!f && view.noteMs > 0) followView.note('You took the wheel · back to the whole farm', false);
+  else followView.hideChip();
+}
+
 // ---------------- input ----------------
 const held = new Set<Control>();
 window.addEventListener('keydown', (e) => {
@@ -244,6 +364,7 @@ window.addEventListener('keydown', (e) => {
   const onButton = e.target instanceof HTMLButtonElement;
   const k = controlFor(e.key, e.code);
   const plain = !e.metaKey && !e.ctrlKey && !e.altKey;
+  if (e.key === 'Escape' && view.follow) { e.preventDefault(); comeHome(); return; }
   if (plain && (e.key === '-' || e.key === '=' || e.key === '+')) { e.preventDefault(); setPace(paceStep(settings.pace, e.key === '-' ? -1 : 1)); return; }
   const toggle = plain && TOGGLES.find((t) => t.letter === e.key.toUpperCase());
   if (toggle) { e.preventDefault(); if (!e.repeat) setToggle(toggle.key, !settings[toggle.key]); return; }
@@ -315,7 +436,7 @@ function update(dt: number): { label: string; working: boolean } {
   for (const i of stepShowers(g.showers, g.field, dt, info.season)) soil.paint(g.field, i);
   let label = 'In the barn', working = false, steer = 0;
   const was = { x: g.v.x, y: g.v.y }, wasMode = g.mode;
-  const item = g.items.find((m) => m.job === g.job && m.rig === g.rig) ?? machinesFor(g.crop).find((m) => m.rig === g.rig);
+  const item = machineItem();
   if (g.mode === 'drive') {
     // a faster pace runs the machine's own clock faster: same turning circle, sooner; the frame's
     // machine time runs in short fixed steps, so steering and the worked strip match 60 fps at any pace
@@ -410,11 +531,13 @@ function drawMachine(c: Ctx, rig: Rig, p: Pose, t: number, working: boolean, whe
 function render(working: boolean): void {
   const t = g.clock, blend = seasonBlend(g.elapsed);
   const key = `${blend.from}>${blend.to}:${blend.k.toFixed(2)}:${scale}`;
-  const z = scale * ZOOM;
+  const z = scale * ZOOM, cam = clampCam(view.glide.cam), world = worldTransform(cam, scale);
   if (key !== bgKey) { bgx.setTransform(z, 0, 0, z, 0, 0); renderBackground(bgx, blend); bgKey = key; }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(bg, 0, 0);
-  ctx.setTransform(z, 0, 0, z, 0, 0);   // the world, in world units
+  // the whole farm as cached; zoomed in, the background is drawn afresh through the camera so it stays sharp
+  if (cam.zoom === 1) ctx.drawImage(bg, 0, 0);
+  else { ctx.setTransform(...world); renderBackground(ctx, blend); }
+  ctx.setTransform(...world);   // the world, in world units, through the camera
   drawField(ctx, soil, g.field, t);
   if (settings.lanes) drawLaneLines(ctx, g.lanesAlpha);
   // with the guides on, auto-steer shows the way it will drive
@@ -458,11 +581,18 @@ function render(working: boolean): void {
   const summer = (blend.from === 'summer' ? 1 - blend.k : 0) + (blend.to === 'summer' ? blend.k : 0);
   drawFlyingBirds(ctx, g.birds, summer * (1 - g.light.dark));
   drawShower(ctx, g.showers, t);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);   // weather, in view units
+  // the ring round what is under the pointer, and round something just picked
+  drawFollowMarks(ctx, 1 / pxPerUnit(cam), view.hover, view.follow?.last ?? null, view.sincePick);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);   // falling snow, in screen space
   drawSnow(ctx, t, winter);
-  // the hour's light over it all, with the lamps lit after dusk; the HUD above the canvas keeps its own colours
+  // the hour's light over it all, with the lamps lit after dusk; the HUD above the canvas keeps its own colours.
+  // It is drawn in the whole farm's view units, scaled by the camera, so its glows land on the lamps up close too.
+  ctx.setTransform(world[0] / ZOOM, 0, 0, world[3] / ZOOM, world[4], world[5]);
   const out = g.mode === 'drive' || g.mode === 'leaving';
   drawDaylight(ctx, g.light, { machine: out ? { x: g.v.x, y: g.v.y, a: g.v.a, front: EXT[g.rig][1] * SCALE } : null, summer, t });
+  if (view.fadeMs > 0 && view.fade) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = view.fadeMs / CUT_MS; ctx.drawImage(view.fade, 0, 0); ctx.globalAlpha = 1;
+  }
   cluster.updateSpeed(g.v.speed);
 }
 
@@ -470,6 +600,7 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min(50, now - last); last = now;
   const { working } = update(dt);
+  stepView(dt, working);
   render(working);
   requestAnimationFrame(frame);
 }
