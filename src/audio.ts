@@ -1,8 +1,9 @@
 import type { Season } from './game/types';
 
 /**
- * Soft ambience made in the browser: wind, the odd bird, and a quiet engine hum
- * that follows the machine's speed. Nothing plays until the first key or click.
+ * Soft ambience made in the browser: wind, the odd bird, a quiet engine hum that
+ * follows the machine's speed, and the patter of a passing shower. Nothing plays
+ * until the first key or click.
  */
 export class Ambience {
   private ac: AudioContext | null = null;
@@ -11,6 +12,8 @@ export class Ambience {
   private windFilter!: BiquadFilterNode;
   private engine!: GainNode;
   private engineOsc: OscillatorNode[] = [];
+  private rain!: GainNode;
+  private rainPan!: StereoPannerNode;
   private birdIn = 3;
   private gust = 0;
   private swelling = false;
@@ -38,6 +41,15 @@ export class Ambience {
     this.wind = ac.createGain(); this.wind.gain.value = 0.05;
     noise.connect(this.windFilter).connect(this.wind).connect(this.master); noise.start();
 
+    // rain: a soft hiss of white noise, high and narrow, silent until a shower passes
+    const hiss = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), h = hiss.getChannelData(0);
+    for (let i = 0; i < h.length; i++) h[i] = Math.random() * 2 - 1;
+    const patter = ac.createBufferSource(); patter.buffer = hiss; patter.loop = true;
+    const rf = ac.createBiquadFilter(); rf.type = 'bandpass'; rf.frequency.value = 3200; rf.Q.value = 0.6;
+    this.rain = ac.createGain(); this.rain.gain.value = 0;
+    this.rainPan = ac.createStereoPanner();
+    patter.connect(rf).connect(this.rain).connect(this.rainPan).connect(this.master); patter.start();
+
     // engine: two soft low oscillators under a low-pass, silent until the machine moves
     const ef = ac.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 220;
     this.engine = ac.createGain(); this.engine.gain.value = 0;
@@ -52,14 +64,17 @@ export class Ambience {
 
   /**
    * `engine` is 0..1 (the machine's speed share); `gust` 0..1 is the wind the farm can see; `dt` in seconds.
-   * `quiet` is true after dusk, when the birds have gone to roost and no longer chirp.
+   * `quiet` is true after dusk, when the birds have gone to roost and no longer chirp. `rain` 0..1 is how
+   * hard a shower is falling and `rainPan` (-1 left to 1 right) where.
    */
-  update(dt: number, engine: number, season: Season, gust = 0, quiet = false): void {
+  update(dt: number, engine: number, season: Season, gust = 0, quiet = false, rain = 0, rainPan = 0): void {
     const ac = this.ac;
     if (!ac || ac.state !== 'running') return;
     const now = ac.currentTime;
     this.engine.gain.setTargetAtTime(engine > 0.01 ? 0.01 + engine * 0.028 : 0, now, 0.4);
     this.engineOsc.forEach((o, i) => o.frequency.setTargetAtTime((i ? 97 : 48) * (1 + engine * 0.25), now, 0.5));
+    this.rain.gain.setTargetAtTime(rain * 0.035, now, 0.8);
+    this.rainPan.pan.setTargetAtTime(rainPan * 0.6, now, 1);
     this.gust -= dt;
     // a gust you can see crossing the farm swells the wind a little as it passes
     if (gust > 0.3 && !this.swelling) { this.swelling = true; this.wind.gain.setTargetAtTime(season === 'winter' ? 0.1 : 0.07, now, 1.2); }
