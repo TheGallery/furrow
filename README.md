@@ -31,6 +31,8 @@ npm run dev      # open the printed local URL
 | L | Lane lines on or off | Lane lines on or off |
 | H | Lane hold on or off | Lane hold on or off |
 | A | Auto-steer on or off | Auto-steer on or off |
+| Click (or tap) | Follow what you clicked; click empty ground to come back | |
+| Esc | Back to the whole farm | |
 
 The arrow keys work as soon as the page loads; no click is needed. If the browser keeps the keyboard elsewhere (for example, the tab opened in the background or the address bar still has focus), the card at the top says "Click the field, then drive with the arrow keys", and one click on the field fixes it.
 
@@ -74,6 +76,14 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 - **Animals.** Sheep graze in a paddock under the barn, with lambs in spring, shorn in summer and snowy-backed in winter, when the flock walks out to winter on the field and comes home again in spring. Hens scratch about among the bales (chicks in spring), and the farm dog trots out to pace you from the top verge and curls up by the bales in winter. They all step aside long before the machine reaches them and never settle where auto-steer turns.
 - **Wildlife at the edges.** Now and then a hare sits out on the verge or the edge of the field (in spring two may box), or a fox trots along the top verge. They leave as the machine comes near and never settle where auto-steer turns. In winter they leave tracks across the snowy grass.
 - **The neighbours' lane.** A quiet farm lane runs along the bottom of the farm, under the field, and every so often someone passes by: one at a time, with long empty spells between. Who comes changes with the season: walkers and the odd van all year, cyclists in spring and summer, a flock moved along with a dog in spring and autumn, a neighbour's tractor with bales in summer and with pumpkins in autumn, and feed going out in winter. Walkers wave while you work the low end of the field, and anyone on the lane slows and waits if the machine noses out in their way.
+- **Following.** Click anything that moves (the dog, a sheep, a hen, a gull, a sparrow on the hedge, the hare, someone on the lane or your own machine) and the view glides in close and follows it, a little ahead of where it is going. Small things come closer: about 2.8× for the dog, 3.4× for the small birds and 1.8× for your machine.
+  - Before you click, a soft ring and a name tag show what is under the pointer, so even a sparrow is easy to pick. Once you click, the chip at the top says what you are following and what it is up to.
+  - Esc, a click on empty ground or the chip's × glide back out to the whole farm.
+  - Auto-steer keeps working while you watch (hold ↑). Steering by hand (← → ↓, or ↑ with auto-steer off) brings the whole farm back, unless it is your own machine you are following.
+  - When the thing you follow goes out of sight (the hare back into cover, a gull flying off, a walker down the lane), the chip says so and the view goes home.
+  - Driving into the barn brings the whole farm back first.
+  - The view always opens on the whole farm.
+  - With reduced motion set, the view cuts with a short fade instead of gliding.
 - **Time of day.** The light follows your own clock: a soft dawn, clear daylight, a golden evening and a moonlit blue night that never hides the field or the machines. After dusk the barn lamp and the machine's lights come on, and fireflies drift over the summer hedges. The farm settles for the night: the hens roost in a row by the bales, the sheep lie down, the dog curls up at home, the gulls and swallows stay away and the hedge birds sit tight and stop singing, while the hare and the fox come by a little more often.
 - **Sound.** Soft wind that swells as a gust passes, the odd bird (heard from where the birds are), a quiet engine hum while you drive and the patter of a passing shower, all generated in the browser.
 - **Saving.** Progress is kept in your browser's local storage and restored when you come back.
@@ -84,15 +94,16 @@ The **Field** tab in the bottom-left corner shows what is planted. Click it to o
 ## Development
 
 ```sh
-npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, animals, the neighbours' lane, what is planted, wind and cloud shadows, wildlife, showers, time of day, layout, save/load
+npm test           # Vitest: season clock, soil and growth, barn rules, carousel, arrow keys, driving, tyres, pace and guides, auto-steer coverage, birds, animals, the neighbours' lane, what is planted, wind and cloud shadows, wildlife, showers, time of day, the camera and following, layout, save/load
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
 - `src/game/` holds the pure game logic. It has no DOM access and is unit-tested.
 - `ZOOM` in `src/game/constants.ts` sets how large the farm is drawn, in screen pixels per world unit. Machines, the barn, plants, lanes and speeds are all in world units, so changing it rescales everything together and the field grows or shrinks to fill the view.
-- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather and showers, the birds, the animals, the wildlife, the neighbours' lane and the light of the hour.
-- `src/ui/` holds the barn label, the season pill, the dashboard and the field card.
+- `src/game/camera.ts` is the camera: where the view looks and how close, at zoom 1 the whole farm as `ZOOM` draws it. `src/game/follow.ts` lists what can be followed, by the same rules the drawing uses.
+- `src/draw/` holds the canvas drawings: the field, the machines, the barn, the weather and showers, the birds, the animals, the wildlife, the neighbours' lane, the light of the hour and the ring round what you can follow.
+- `src/ui/` holds the barn label, the season pill, the dashboard, the field card and the follow chip.
 - `src/audio.ts` holds the ambient sound.
 
 ## License

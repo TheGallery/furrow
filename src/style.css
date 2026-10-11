@@ -16,6 +16,22 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 .hint-card { position: absolute; top: 2.4%; left: 50%; transform: translateX(-50%); background: rgba(255, 253, 248, 0.94); border: 1px solid var(--line); border-radius: 999px; padding: 0.4em 1.1em; font-size: clamp(11px, 1.3cqw, 16px); white-space: nowrap; transition: opacity 1.2s ease; pointer-events: none; }
 .hint-card.gone { opacity: 0; }
 
+/* following: a chip in the hint card's place says what is followed, and a tag names what is under the pointer */
+.follow-chip { position: absolute; top: 2.4%; left: 50%; transform: translateX(-50%); max-width: 92%; display: flex; align-items: center; gap: 0.5em; background: rgba(255, 253, 248, 0.95); border: 1px solid var(--line); border-radius: 999px; padding: 0.3em 0.35em 0.3em 1.1em; font-size: clamp(11px, 1.3cqw, 16px); white-space: nowrap; transition: opacity 0.6s ease; }
+.follow-chip.gone { opacity: 0; pointer-events: none; }
+.follow-chip.bare { padding: 0.4em 1.1em; }
+.follow-chip.bare kbd, .follow-chip.bare .fw-x { display: none; }
+.fw-text { overflow: hidden; text-overflow: ellipsis; }
+.fw-text b { font-weight: 600; }
+.fw-text span { color: var(--muted); }
+.follow-chip kbd { font: 600 0.72em ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 0.35em; color: var(--muted); }
+.fw-x { flex: none; width: 1.6em; height: 1.6em; border-radius: 50%; border: 0; background: var(--panel); color: var(--ink); font: inherit; line-height: 1; cursor: pointer; }
+.fw-x:hover { background: #ebe5d4; }
+.follow-tag { position: absolute; transform: translate(-50%, -100%); pointer-events: none; background: rgba(255, 253, 248, 0.96); border: 1px solid var(--line); border-radius: 999px; padding: calc(2 * var(--u)) calc(10 * var(--u)); font-size: calc(12.5 * var(--u)); white-space: nowrap; box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(70, 55, 35, 0.14); }
+.follow-tag b { font-weight: 600; }
+.follow-tag span { color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 .menu { font-size: calc(12.5 * var(--u)); line-height: 1.35; color: var(--ink); }
 
 .season-pill { position: absolute; left: calc(24 * var(--u)); top: calc(76 * var(--u)); height: calc(28 * var(--u)); display: flex; align-items: center; gap: calc(7 * var(--u)); padding: 0 calc(13 * var(--u)) 0 calc(7 * var(--u)); border-radius: calc(14 * var(--u)); background: rgba(255, 253, 248, 0.92); font-size: calc(13 * var(--u)); white-space: nowrap; }
@@ -102,5 +118,5 @@ main { height: 100%; display: grid; place-items: center; padding: 16px; }
 .fc-rest { font-size: calc(11 * var(--u)); color: var(--muted); border-top: 1px dashed var(--line); padding-top: calc(4 * var(--u)); margin-top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .barn-label, .cv-arrow, .barn-item, .hint-card, .dc-arc, .dc-knob, .fc-bar i { transition: none; }
+  .barn-label, .cv-arrow, .barn-item, .hint-card, .follow-chip, .dc-arc, .dc-knob, .fc-bar i { transition: none; }
 }
